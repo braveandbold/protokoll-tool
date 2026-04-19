@@ -130,7 +130,7 @@ const CHAPTERS = [
 const CH_BG = {1:'#eeedfc',2:'#ccfbf1',3:'#e0f2fe',4:'#fdf2f8'};
 const CH_FG = {1:'#3730a3',2:'#0d9488',3:'#0369a1',4:'#86198f'};
 
-// -- Supabase─
+// -- Supabase
 var db = null;
 
 // -- State
@@ -145,7 +145,7 @@ const fmtTime = iso => iso?new Date(iso).toLocaleTimeString('de-DE',{hour:'2-dig
 const fmtDate = d => d?new Date(d+'T12:00:00').toLocaleDateString('de-DE'):'–';
 function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 
-// -- Supabase: Laden─
+// -- Supabase: Laden
 async function load(){
   showLoadingOverlay(true);
   try {
@@ -302,7 +302,7 @@ async function deleteBattFromDb(id){
   await db.from('studies').delete().eq('id',id);
 }
 
-// -- Supabase: Session löschen─
+// -- Supabase: Session löschen
 async function deleteSessFromDb(id){
   await db.from('sessions').delete().eq('id',id);
 }
@@ -321,7 +321,7 @@ async function updSess(s){
   await saveSessToDb(s);
 }
 
-// -- Loading Overlay─
+// -- Loading Overlay
 function showLoadingOverlay(show){
   let el=document.getElementById('loading-overlay');
   if(!el){
@@ -335,7 +335,7 @@ function showLoadingOverlay(show){
 }
 function show(v){['login','batteries','battery-detail','battery-edit','session-setup','session-test','session-report'].forEach(n=>document.getElementById('v-'+n).classList.toggle('hidden',n!==v))}
 
-// -- Batteries list─
+// -- Batteries list
 function renderBatteries(){
   show('batteries');
   const el=document.getElementById('v-batteries');
@@ -393,7 +393,7 @@ function delBatt(id){
   });
 }
 
-// -- Battery detail─
+// -- Battery detail
 function goBattDetail(id){activeBattId=id;show('battery-detail');renderBattDetail()}
 function renderBattDetail(){
   const b=activeBatt();if(!b){renderBatteries();return}
@@ -507,7 +507,7 @@ function delSess(id){
   });
 }
 
-// -- Battery edit─
+// -- Battery edit
 function goBattEdit(id){activeBattId=id;show('battery-edit');renderBattEdit()}
 function renderBattEdit(){
   const b=activeBatt();if(!b){renderBatteries();return}
@@ -597,7 +597,7 @@ function updateStep(stepId,field,val){
   updBatt(b);
 }
 
-// -- Session setup─
+// -- Session setup
 function goSessSetup(id){activeSessId=id;show('session-setup');renderSessSetup()}
 function renderSessSetup(){
   const s=activeSess();if(!s){renderBatteries();return}
@@ -669,7 +669,7 @@ function startSession(){
   s.status='active';updSess(s);goSessTest(s.id);
 }
 
-// -- Session test (live)─
+// -- Session test (live)
 // Per-step input state: { stepId|'general': { type, sev, text } }
 let stepInputs = {};
 function getSI(sid){ if(!stepInputs[sid])stepInputs[sid]={type:null,sev:3,text:''}; return stepInputs[sid]; }
