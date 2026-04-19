@@ -7,6 +7,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<script src="config.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
@@ -130,8 +131,6 @@ const CH_BG = {1:'#eeedfc',2:'#ccfbf1',3:'#e0f2fe',4:'#fdf2f8'};
 const CH_FG = {1:'#3730a3',2:'#0d9488',3:'#0369a1',4:'#86198f'};
 
 // -- Supabase─
-var SUPABASE_URL = 'https://jzyygwpnohkkvvgrlyul.supabase.co';       // z.B. https://xyz.supabase.co
-var SUPABASE_KEY = 'sb_publishable_9e-k3KA3tqtitRz_RuevgQ_p7IXnlY0';      // Publishable Key aus Settings → API Keys
 var db = null;
 
 // -- State
