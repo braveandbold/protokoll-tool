@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Usability Protokoll-Tool</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f5f4f0;--surface:#fff;--surface2:#f0efe9;--border:#e0ddd6;--border2:#ccc9c0;
+  --text:#1c1b18;--text2:#6b6860;--text3:#9c9a94;
+  --accent:#2d2a8a;--accent-bg:#eeedfc;--accent-fg:#2d2a8a;
+  --live-bg:#0f1a14;--live-bar:#e0f5ec;
+  --r:10px;--rl:14px
+}
+body{font-family:'IBM Plex Sans',sans-serif;background:var(--bg);color:var(--text);font-size:15px;line-height:1.5;min-height:100vh}
+h1{font-size:28px;font-weight:600}
+h2{font-size:21px;font-weight:600}
+h3{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text2);margin-bottom:14px}
+.page{max-width:940px;margin:0 auto;padding:36px 24px 80px}
+.page-narrow{max-width:700px;margin:0 auto;padding:36px 24px 80px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:22px 24px;margin-bottom:14px}
+button{font-family:'IBM Plex Sans',sans-serif;font-size:14px;font-weight:500;padding:8px 17px;border-radius:var(--r);border:1px solid var(--border2);background:var(--surface);color:var(--text);cursor:pointer;transition:background .12s,border-color .12s;white-space:nowrap}
+button:hover{background:var(--surface2)}
+.btn-primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-primary:hover{background:#3f3baa}
+.btn-danger{background:#fff5f5;color:#c0392b;border-color:#f5c6c2}
+.btn-danger:hover{background:#fde8e6}
+.btn-ghost{border:none;background:none;color:var(--text2);padding:6px 10px}
+.btn-ghost:hover{color:var(--text);background:var(--surface2)}
+.btn-add{background:#085041;color:#e0f5ec;border-color:#085041;width:100%;padding:11px;font-size:15px;border-radius:var(--r)}
+.btn-add:hover{background:#0d7a5a}
+.btn-sm{font-size:13px;padding:6px 13px}
+label.lbl{display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:5px;letter-spacing:.03em}
+input[type=text],input[type=date],input[type=url],textarea,select{width:100%;padding:9px 12px;font-family:'IBM Plex Sans',sans-serif;font-size:14px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);color:var(--text);outline:none;transition:border-color .12s}
+input:focus,textarea:focus,select:focus{border-color:var(--accent)}
+textarea{resize:vertical}
+.field{margin-bottom:15px}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;white-space:nowrap}
+.badge-planned{background:#eeedfc;color:#2d2a8a}
+.badge-active{background:#fff3e0;color:#8a4a00}
+.badge-done{background:#e0f5ec;color:#0a5c44}
+.back-link{background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;padding:0 0 20px;display:flex;align-items:center;gap:5px;font-family:'IBM Plex Sans',sans-serif}
+.back-link:hover{color:var(--text);background:none}
+.hdr{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:28px;gap:14px;flex-wrap:wrap}
+.eyebrow{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:5px}
+.empty{text-align:center;padding:44px 20px;color:var(--text3)}
+/* Battery card */
+.batt-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--rl);padding:20px 24px;margin-bottom:10px;cursor:pointer;transition:box-shadow .12s}
+.batt-card:hover{box-shadow:0 2px 16px rgba(0,0,0,.07)}
+/* Session row */
+.sess-row{padding:14px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px;cursor:pointer;transition:background .1s}
+.sess-row:hover{background:var(--surface2)}
+.sess-row:last-child{border-bottom:none}
+/* Step list */
+.step-item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.step-item:last-child{border-bottom:none}
+.step-nr{width:28px;height:28px;border-radius:50%;background:var(--accent-bg);color:var(--accent-fg);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;margin-top:1px}
+/* Live mode */
+.topbar{background:var(--live-bg);color:var(--live-bar);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;z-index:100}
+.live-panel{max-width:940px;margin:0 auto;padding:22px 24px;display:grid;grid-template-columns:360px 1fr;gap:22px;align-items:start}
+.live-dot{font-size:12px;font-weight:700;padding:4px 12px;border-radius:99px;background:#ff443320;color:#ff6655;letter-spacing:.04em}
+/* Type & sev buttons */
+.type-btn{padding:6px 13px;border-radius:99px;font-size:13px;font-weight:600;border:2px solid transparent;cursor:pointer;transition:opacity .12s,border-color .12s;opacity:.5}
+.type-btn.sel{opacity:1;border-color:currentColor}
+.sev-btn{width:42px;height:42px;border-radius:9px;border:none;cursor:pointer;font-size:15px;font-weight:600;opacity:.35;transition:opacity .12s}
+.sev-btn.sel{opacity:1}
+/* Entry list */
+.entry-row{padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:10px;align-items:flex-start}
+.entry-row:last-child{border-bottom:none}
+.entry-icon{font-size:12px;font-weight:600;padding:3px 9px;border-radius:99px;flex-shrink:0;margin-top:2px}
+.entry-meta{font-family:'IBM Plex Mono',monospace;font-size:11px;color:var(--text3);margin-bottom:4px;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.sev-pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:99px}
+/* Step ref in live */
+.step-ref{padding:10px 14px;border-radius:var(--r);border:1px solid var(--border);background:var(--surface2);margin-bottom:8px;cursor:pointer;transition:border-color .12s,background .12s}
+.step-ref:hover{border-color:var(--accent);background:var(--accent-bg)}
+.step-ref.sel{border-color:var(--accent);background:var(--accent-bg)}
+/* Stats */
+.stat-card{border-radius:var(--rl);padding:16px 18px}
+.stat-val{font-size:26px;font-weight:600;margin-bottom:4px}
+/* Table */
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th{padding:9px 14px;text-align:left;font-size:12px;font-weight:600;color:var(--text2);background:var(--surface2);border-bottom:1px solid var(--border)}
+.tbl td{padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.5}
+.tbl tr:last-child td{border-bottom:none}
+.scroll-panel{max-height:540px;overflow-y:auto}
+.hidden{display:none!important}
+/* Confirm dialog */
+#confirm-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:999;display:flex;align-items:center;justify-content:center}
+#confirm-box{background:#fff;border-radius:14px;padding:28px 28px 22px;max-width:380px;width:90%;box-shadow:0 8px 40px rgba(0,0,0,.18)}
+#confirm-msg{font-size:15px;margin-bottom:22px;line-height:1.5;color:var(--text)}
+#confirm-btns{display:flex;gap:10px;justify-content:flex-end}
+@media(max-width:700px){.grid2{grid-template-columns:1fr}.live-panel{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div id="v-batteries" class="hidden"></div>
+<div id="v-battery-detail" class="hidden"></div>
+<div id="v-battery-edit" class="hidden"></div>
+<div id="v-session-setup" class="hidden"></div>
+<div id="v-session-test" class="hidden"></div>
+<div id="v-session-report" class="hidden"></div>
+
+<script>
+// ── Constants ────────────────────────────────────────────────────────────────
+const BATT_KEY = 'upt_studies_v1';
+const SESS_KEY = 'upt_sessions_v1';
+const SEV = {label:{1:'Sehr gering',2:'Gering',3:'Mittel',4:'Hoch',5:'Kritisch'},
+  bg:{1:'#bbf7d0',2:'#d9f99d',3:'#fef08a',4:'#fed7aa',5:'#fecaca'},
+  fg:{1:'#14532d',2:'#365314',3:'#713f12',4:'#7c2d12',5:'#7f1d1d'}};
+const TYPES = ['Beobachtung','Problem','Zitat','Lob','Notiz'];
+const T = {
+  cls:  {Beobachtung:'t-obs',Problem:'t-prob',Zitat:'t-quot',Lob:'t-lob',Notiz:'t-note'},
+  bg:   {Beobachtung:'#dbeafe',Problem:'#fee2e2',Zitat:'#ede9fe',Lob:'#dcfce7',Notiz:'#f3f4f6'},
+  fg:   {Beobachtung:'#1e3a8a',Problem:'#7f1d1d',Zitat:'#3b1085',Lob:'#14532d',Notiz:'#374151'},
+  icon: {Beobachtung:'◉',Problem:'▲',Zitat:'❝',Lob:'✓',Notiz:'○'}
+};
+
+const CHAPTERS = [
+  {id:1, label:'Vorab-Fragen'},
+  {id:2, label:'Testszenario'},
+  {id:3, label:'Vertiefungsfragen'},
+  {id:4, label:'Abschlussbewertung'},
+];
+const CH_BG = {1:'#eeedfc',2:'#ccfbf1',3:'#e0f2fe',4:'#fdf2f8'};
+const CH_FG = {1:'#3730a3',2:'#0d9488',3:'#0369a1',4:'#86198f'};
+
+// ── State ────────────────────────────────────────────────────────────────────
+let batteries = [], sessions = [];
+let activeBattId = null, activeSessId = null;
+let liveType = 'Beobachtung', liveSev = 3, liveStepId = null;
+
+const genId = () => Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+const ts = () => new Date().toISOString();
+const fmtTime = iso => iso?new Date(iso).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}):'';
+const fmtDate = d => d?new Date(d+'T12:00:00').toLocaleDateString('de-DE'):'–';
+function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function save(){try{localStorage.setItem(BATT_KEY,JSON.stringify(batteries));localStorage.setItem(SESS_KEY,JSON.stringify(sessions))}catch(e){}}
+function load(){try{const b=localStorage.getItem(BATT_KEY);if(b)batteries=JSON.parse(b);const s=localStorage.getItem(SESS_KEY);if(s)sessions=JSON.parse(s)}catch(e){}}
+function activeBatt(){return batteries.find(b=>b.id===activeBattId)||null}
+function activeSess(){return sessions.find(s=>s.id===activeSessId)||null}
+function battSessions(battId){return sessions.filter(s=>s.batteryId===battId)}
+function updBatt(b){batteries=batteries.map(x=>x.id===b.id?b:x);save()}
+function updSess(s){sessions=sessions.map(x=>x.id===s.id?s:x);save()}
+function show(v){['batteries','battery-detail','battery-edit','session-setup','session-test','session-report'].forEach(n=>document.getElementById('v-'+n).classList.toggle('hidden',n!==v))}
+
+// ── Batteries list ───────────────────────────────────────────────────────────
+function renderBatteries(){
+  show('batteries');
+  const el=document.getElementById('v-batteries');
+  const rows=batteries.length===0
+    ?`<div class="empty"><div style="font-size:38px;margin-bottom:14px">◫</div><div>Noch keine Studien – erstelle deine erste</div></div>`
+    :batteries.map(b=>{
+      const slist=battSessions(b.id);
+      const done=slist.filter(s=>s.status==='done').length;
+      const active=slist.filter(s=>s.status==='active').length;
+      return`<div class="batt-card" onclick="goBattDetail('${b.id}')">
+        <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
+              <span style="font-weight:600;font-size:17px">${esc(b.name)||'(Ohne Name)'}</span>
+              ${b.product?`<span style="font-size:13px;color:var(--text2)">${esc(b.product)}</span>`:''}
+            </div>
+            <div style="font-size:13px;color:var(--text2);display:flex;gap:16px;flex-wrap:wrap">
+              <span>${(b.steps||[]).length} Leitfaden-Schritte</span>
+              <span>${slist.length} Sessions (${done} abgeschlossen${active>0?', '+active+' aktiv':''})</span>
+              <span>Erstellt ${fmtDate(b.createdAt?.slice(0,10))}</span>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-shrink:0" onclick="event.stopPropagation()">
+            <button class="btn-sm" onclick="goBattEdit('${b.id}')">Studie bearbeiten</button>
+            <button class="btn-sm btn-danger" onclick="delBatt('${b.id}')" title="Studie löschen" style="padding:5px 9px;line-height:1;display:inline-flex;align-items:center"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 3.5h10M5.5 3.5V2.5a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1M5.5 6v4M8.5 6v4M3 3.5l.667 7.5A.5.5 0 004.165 11.5h5.67a.5.5 0 00.498-.5L11 3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  el.innerHTML=`<div class="page">
+    <div class="hdr">
+      <div><div class="eyebrow">Usability Testing</div><h1>Protokoll-Tool</h1></div>
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn-primary" onclick="newBattery()">+ Neue Studie</button>
+      </div>
+    </div>
+    ${rows}
+    <p style="margin-top:24px;font-size:12px;color:var(--text3);text-align:center;line-height:1.6">Alle Daten werden ausschließlich lokal im Cache deines Browsers gespeichert. Es findet keine zentrale Speicherung auf Servern statt. Wenn du den Browsercache löschst, gehen alle Daten unwiderruflich verloren.</p>
+  </div>`;
+}
+function newBattery(){
+  const b={id:genId(),name:'',product:'',link:'',description:'',steps:[],createdAt:ts()};
+  batteries=[b,...batteries];save();goBattEdit(b.id);
+}
+function delBatt(id){
+  ask('Studie und alle zugehörigen Sessions löschen?', ()=>{
+    batteries=batteries.filter(b=>b.id!==id);
+    sessions=sessions.filter(s=>s.batteryId!==id);
+    save();renderBatteries();
+  });
+}
+
+// ── Battery detail ───────────────────────────────────────────────────────────
+function goBattDetail(id){activeBattId=id;show('battery-detail');renderBattDetail()}
+function renderBattDetail(){
+  const b=activeBatt();if(!b){renderBatteries();return}
+  const slist=battSessions(b.id);
+  const STATUS={planned:{label:'Geplant',cls:'badge-planned'},active:{label:'Aktiv',cls:'badge-active'},done:{label:'Abgeschlossen',cls:'badge-done'}};
+  const stepsList=(()=>{
+    const steps=b.steps||[];
+    if(steps.length===0) return`<div style="color:var(--text3);font-size:13px;padding:6px 0">Keine Schritte definiert – <button class="btn-ghost btn-sm" style="padding:0" onclick="goBattEdit('${b.id}')">Leitfaden bearbeiten</button></div>`;
+    let html='';let globalIdx=0;
+    CHAPTERS.forEach(ch=>{
+      const chSteps=steps.filter(s=>(s.chapter||1)===ch.id);
+      if(chSteps.length===0)return;
+      html+=`<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:4px 14px;border-radius:99px;background:${CH_BG[ch.id]};color:${CH_FG[ch.id]};display:inline-block;margin:14px 0 8px">${ch.label}</div>`;
+      chSteps.forEach(s=>{globalIdx++;html+=`<div class="step-item" style="border-left:3px solid ${CH_FG[ch.id]};padding-left:12px;margin-left:2px"><div class="step-nr" style="flex-shrink:0;background:${CH_BG[ch.id]};color:${CH_FG[ch.id]}">${globalIdx}</div><div><div style="font-weight:500;font-size:14px">${esc(s.title)}</div>${s.description?`<div style="font-size:13px;color:var(--text2);margin-top:3px">${esc(s.description)}</div>`:''}</div></div>`;});
+    });
+    return html;
+  })();
+  const sessRows=slist.length===0
+    ?`<div class="empty" style="padding:32px">Noch keine Sessions – füge die erste Person hinzu</div>`
+    :slist.map((s,i)=>{
+      const st=STATUS[s.status]||STATUS.planned;
+      const cnt=(s.entries||[]).length;
+      return`<div class="sess-row" onclick="openSession('${s.id}')">
+        <div style="width:24px;height:24px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--text2);flex-shrink:0">${i+1}</div>
+        <div style="flex:1;min-width:0">
+          <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
+            <span style="font-weight:500">${esc(s.personName)||'Person '+(i+1)}</span>
+            <span class="badge ${st.cls}">${st.label}</span>
+          </div>
+          <div style="font-size:12px;color:var(--text3);display:flex;gap:12px;margin-top:3px;flex-wrap:wrap">
+            ${s.personCode?`<span style="font-family:'IBM Plex Mono',monospace">${esc(s.personCode)}</span>`:''}
+            ${s.date?`<span>${fmtDate(s.date)}</span>`:''}
+            ${s.tester?`<span>Protokollant: ${esc(s.tester)}</span>`:''}
+            <span>${cnt} Einträge</span>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;flex-shrink:0" onclick="event.stopPropagation()">
+          <button class="btn-sm" onclick="goSessSetup('${s.id}')" title="Bearbeiten" style="padding:5px 8px;line-height:1;display:flex;align-items:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+          ${s.status==='active'?`<button class="btn-sm btn-primary" onclick="goSessTest('${s.id}')">Fortsetzen</button>`:''}
+          ${s.status==='done'?`<button class="btn-sm" onclick="goSessReport('${s.id}')" title="Bericht" style="padding:5px 8px;line-height:1;display:flex;align-items:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></button>`:''}
+          <button class="btn-sm btn-danger" onclick="delSess('${s.id}')" title="Session löschen" style="padding:5px 9px;line-height:1;display:inline-flex;align-items:center"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 3.5h10M5.5 3.5V2.5a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1M5.5 6v4M8.5 6v4M3 3.5l.667 7.5A.5.5 0 004.165 11.5h5.67a.5.5 0 00.498-.5L11 3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        </div>
+      </div>`;
+    }).join('');
+  document.getElementById('v-battery-detail').innerHTML=`<div class="page">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+      <button class="back-link" style="padding:0;margin:0" onclick="renderBatteries()">← Alle Studien</button>
+      <div style="display:flex;gap:8px;align-items:center">
+        <button class="btn-sm" onclick="goBattEdit('${b.id}')" title="Studie bearbeiten" style="padding:8px 14px;line-height:1;display:flex;align-items:center;gap:6px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg> Studie bearbeiten</button>
+        <button class="btn-danger btn-sm" onclick="delBatt('${b.id}')" title="Studie löschen" style="padding:8px 14px;line-height:1;display:flex;align-items:center;gap:6px"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 3.5h10M5.5 3.5V2.5a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1M5.5 6v4M8.5 6v4M3 3.5l.667 7.5A.5.5 0 004.165 11.5h5.67a.5.5 0 00.498-.5L11 3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg> Studie löschen</button>
+      </div>
+    </div>
+    <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:24px;gap:14px;flex-wrap:wrap">
+      <div>
+        <h2 style="margin-bottom:10px">${esc(b.name)||'(Ohne Name)'}</h2>
+        <div style="display:flex;flex-wrap:wrap;gap:10px 24px;font-size:14px;color:var(--text2)">
+          ${b.product?`<span><span style="font-weight:600;color:var(--text)">Produkt</span> ${esc(b.product)}</span>`:''}
+          ${b.link?`<span><span style="font-weight:600;color:var(--text)">Link</span> <a href="${esc(b.link)}" target="_blank" style="color:var(--accent)">${esc(b.link)}</a></span>`:''}
+          ${b.description?`<span style="width:100%;margin-top:2px"><span style="font-weight:600;color:var(--text)">Ziel</span> ${esc(b.description)}</span>`:''}
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-bottom:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;cursor:pointer" onclick="toggleLeitfaden()">
+        <h3 style="margin:0">Leitfaden</h3>
+        <span id="leitfaden-chevron" style="display:inline-flex;transition:transform .2s;transform:rotate(0deg)"><svg width="18" height="18" viewBox="0 0 18 18" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4.5 6.75L9 11.25L13.5 6.75" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      </div>
+      <div id="leitfaden-body" style="display:none;margin-top:14px">${stepsList}</div>
+    </div>
+    <div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+        <h3 style="margin:0">Sessions · ${slist.length}</h3>
+      </div>
+      <div class="card" style="padding:0;overflow:hidden">${sessRows}</div>
+      <div style="display:flex;justify-content:flex-end;margin-top:10px">
+        <button class="btn-primary" onclick="newSession('${b.id}')">+ Neue Session</button>
+      </div>
+    </div>
+  </div>`;
+}
+function toggleLeitfaden(){
+  const body=document.getElementById('leitfaden-body');
+  const chevron=document.getElementById('leitfaden-chevron');
+  if(!body)return;
+  const open=body.style.display==='none';
+  body.style.display=open?'':'none';
+  if(chevron)chevron.style.transform=open?'rotate(-180deg)':'rotate(0deg)';
+}
+function startSessionDirect(id){
+  activeSessId=id;
+  const s=activeSess();if(!s)return;
+  s.status='active';updSess(s);goSessTest(id);
+}
+function openSession(id){
+  const s=sessions.find(x=>x.id===id);if(!s)return;
+  if(s.status==='planned'){activeSessId=id;s.status='active';updSess(s);goSessTest(id);}
+  else goSessTest(id);
+}
+function newSession(battId){
+  const s={id:genId(),batteryId:battId,personName:'',personCode:'',personNotes:'',date:new Date().toISOString().slice(0,10),tester:'',status:'planned',entries:[],createdAt:ts()};
+  sessions=[...sessions,s];save();goSessSetup(s.id);
+}
+function delSess(id){
+  ask('Session löschen?', ()=>{
+    sessions=sessions.filter(s=>s.id!==id);save();renderBattDetail();
+  });
+}
+
+// ── Battery edit ─────────────────────────────────────────────────────────────
+function goBattEdit(id){activeBattId=id;show('battery-edit');renderBattEdit()}
+function renderBattEdit(){
+  const b=activeBatt();if(!b){renderBatteries();return}
+  const steps=b.steps||[];
+
+  const chapterCards=CHAPTERS.map(ch=>{
+    const chSteps=steps.filter(s=>(s.chapter||1)===ch.id);
+    const stepRows=chSteps.map((s,i)=>`
+      <div class="step-item" id="step-${s.id}">
+        <div class="step-nr" style="flex-shrink:0;background:${CH_BG[ch.id]};color:${CH_FG[ch.id]}">${i+1}</div>
+        <div style="flex:1;display:grid;grid-template-columns:1fr 1fr;gap:10px">
+          <input type="text" value="${esc(s.title)}" placeholder="Frage oder Aufgabe" oninput="updateStep('${s.id}','title',this.value)">
+          <input type="text" value="${esc(s.description)}" placeholder="Beschreibung (optional)" oninput="updateStep('${s.id}','description',this.value)">
+        </div>
+        <button class="btn-ghost btn-sm" onclick="removeStep('${s.id}')" style="flex-shrink:0;color:var(--text3)">✕</button>
+      </div>`).join('');
+
+    return`<div class="card" style="border-left:3px solid ${CH_FG[ch.id]};margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:${chSteps.length>0?'14px':'12px'}">
+        <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:4px 14px;border-radius:99px;background:${CH_BG[ch.id]};color:${CH_FG[ch.id]}">${ch.label}</span>
+        <button class="btn-sm" onclick="addStep(${ch.id})" style="border-color:${CH_FG[ch.id]};color:${CH_FG[ch.id]}">+ Schritt</button>
+      </div>
+      ${chSteps.length>0?`<div>${stepRows}</div>`:`<div style="font-size:13px;color:var(--text3);padding:4px 0">Noch keine Schritte in diesem Kapitel.</div>`}
+    </div>`;
+  }).join('');
+
+  document.getElementById('v-battery-edit').innerHTML=`<div class="page-narrow">
+    <button class="back-link" onclick="goBattDetail('${b.id}')">← Zurück zur Studie</button>
+    <h2 style="margin-bottom:5px">${esc(b.name)||'Neue Studie'}</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:24px">Wird automatisch gespeichert.</p>
+
+    <div class="card">
+      <h3>Allgemeine Informationen</h3>
+      <div class="field"><label class="lbl">Name der Studie</label>
+        <input type="text" id="be-name" value="${esc(b.name)}" placeholder="z.B. Checkout-Flow Test Q2 2025"></div>
+      <div class="grid2">
+        <div class="field"><label class="lbl">Produkt / System</label>
+          <input type="text" id="be-product" value="${esc(b.product)}" placeholder="z.B. Shop-App v2.1"></div>
+        <div class="field"><label class="lbl">Link / URL</label>
+          <input type="text" id="be-link" value="${esc(b.link)}" placeholder="https://..."></div>
+      </div>
+      <div class="field"><label class="lbl">Beschreibung / Ziel</label>
+        <textarea id="be-desc" rows="3" placeholder="Was soll dieser Test herausfinden?">${esc(b.description)}</textarea></div>
+    </div>
+
+    <h3 style="margin-bottom:14px">Leitfaden</h3>
+    ${chapterCards}
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button onclick="saveBattEdit();goBattDetail('${b.id}')">Speichern &amp; Zurück</button>
+    </div>
+  </div>`;
+
+  ['be-name','be-product','be-link','be-desc'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.addEventListener('input',saveBattEditAuto);
+  });
+}
+function saveBattEditAuto(){
+  const b=activeBatt();if(!b)return;
+  b.name=document.getElementById('be-name')?.value||'';
+  b.product=document.getElementById('be-product')?.value||'';
+  b.link=document.getElementById('be-link')?.value||'';
+  b.description=document.getElementById('be-desc')?.value||'';
+  updBatt(b);
+  const h=document.querySelector('#v-battery-edit h2');
+  if(h)h.textContent=b.name||'Neue Studie';
+}
+function saveBattEdit(){saveBattEditAuto()}
+function addStep(chapterId){
+  const b=activeBatt();if(!b)return;
+  saveBattEditAuto();
+  const newStep={id:genId(),title:'',description:'',chapter:chapterId||1};
+  b.steps=[...(b.steps||[]),newStep];
+  updBatt(b);renderBattEdit();
+  setTimeout(()=>{const el=document.getElementById('step-'+newStep.id);if(el){const inp=el.querySelector('input');if(inp)inp.focus();}},50);
+}
+function removeStep(stepId){
+  const b=activeBatt();if(!b)return;
+  saveBattEditAuto();
+  b.steps=(b.steps||[]).filter(s=>s.id!==stepId);
+  updBatt(b);renderBattEdit();
+}
+function updateStep(stepId,field,val){
+  const b=activeBatt();if(!b)return;
+  b.steps=(b.steps||[]).map(s=>s.id===stepId?{...s,[field]:val}:s);
+  updBatt(b);
+}
+
+// ── Session setup ─────────────────────────────────────────────────────────────
+function goSessSetup(id){activeSessId=id;show('session-setup');renderSessSetup()}
+function renderSessSetup(){
+  const s=activeSess();if(!s){renderBatteries();return}
+  const b=batteries.find(x=>x.id===s.batteryId);
+  document.getElementById('v-session-setup').innerHTML=`<div class="page-narrow">
+    <button class="back-link" onclick="goBattDetail('${s.batteryId}')">← Zurück zur Studie</button>
+    <div style="margin-bottom:5px;font-size:12px;color:var(--text3)">${esc(b?.name||'')}</div>
+    <h2 style="margin-bottom:5px">${esc(s.personName)||'Neue Testsession'}</h2>
+    <p style="color:var(--text2);font-size:13px;margin-bottom:24px">Wird automatisch gespeichert.</p>
+
+    <div class="card">
+      <h3>Testperson</h3>
+      <div class="grid2">
+        <div class="field"><label class="lbl">Name der Testperson</label>
+          <input type="text" id="ss-name" value="${esc(s.personName)}" placeholder="Name oder Pseudonym"></div>
+        <div class="field"><label class="lbl">Code / ID (optional)</label>
+          <input type="text" id="ss-code" value="${esc(s.personCode)}" placeholder="z.B. TP-03"></div>
+      </div>
+      <div class="field"><label class="lbl">Notizen zur Person</label>
+        <textarea id="ss-notes" rows="2" placeholder="Alter, Erfahrung, Besonderheiten…">${esc(s.personNotes)}</textarea></div>
+    </div>
+
+    <div class="card">
+      <h3>Session-Details</h3>
+      <div class="grid2">
+        <div class="field"><label class="lbl">Datum</label>
+          <input type="date" id="ss-date" value="${s.date||''}"></div>
+        <div class="field"><label class="lbl">Protokollant:in</label>
+          <input type="text" id="ss-tester" value="${esc(s.tester)}" placeholder="Name"></div>
+      </div>
+      <div class="field"><label class="lbl">Status</label>
+        <select id="ss-status" onchange="setSessStatus(this.value)">
+          <option value="planned"${s.status==='planned'?' selected':''}>Geplant</option>
+          <option value="active"${s.status==='active'?' selected':''}>Aktiv</option>
+          <option value="done"${s.status==='done'?' selected':''}>Abgeschlossen</option>
+        </select>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
+      <button onclick="saveSessSetup();goBattDetail('${s.batteryId}')">Abbrechen</button>
+      <button class="btn-primary" onclick="saveSessSetup();goBattDetail('${s.batteryId}')">Speichern</button>
+    </div>
+  </div>`;
+
+  ['ss-name','ss-code','ss-notes','ss-date','ss-tester'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el)el.addEventListener('input',saveSessSetupAuto);
+  });
+}
+function saveSessSetupAuto(){
+  const s=activeSess();if(!s)return;
+  s.personName=document.getElementById('ss-name')?.value||'';
+  s.personCode=document.getElementById('ss-code')?.value||'';
+  s.personNotes=document.getElementById('ss-notes')?.value||'';
+  s.date=document.getElementById('ss-date')?.value||'';
+  s.tester=document.getElementById('ss-tester')?.value||'';
+  updSess(s);
+  const h=document.querySelector('#v-session-setup h2');
+  if(h)h.textContent=s.personName||'Neue Testsession';
+}
+function saveSessSetup(){saveSessSetupAuto()}
+function setSessStatus(val){
+  const s=activeSess();if(!s)return;
+  s.status=val;updSess(s);
+}
+function startSession(){
+  const s=activeSess();if(!s)return;
+  s.status='active';updSess(s);goSessTest(s.id);
+}
+
+// ── Session test (live) ───────────────────────────────────────────────────────
+// Per-step input state: { stepId|'general': { type, sev, text } }
+let stepInputs = {};
+function getSI(sid){ if(!stepInputs[sid])stepInputs[sid]={type:null,sev:3,text:''}; return stepInputs[sid]; }
+
+// Returns true if severity should be hidden for this slot (chapter 1 = Vorab-Fragen, or general)
+function noSevForSlot(sid){
+  if(!sid||sid==='general') return true;
+  const s=activeSess(); if(!s) return false;
+  const b=batteries.find(x=>x.id===s.batteryId); if(!b) return false;
+  const step=(b.steps||[]).find(st=>st.id===sid);
+  return step?(step.chapter||1)===1:false;
+}
+
+// Edit state for existing entries
+let editingEntryId = null;
+let editEntry = {type:null, sev:3, text:''};
+
+function renderEntryRows(entries){
+  return entries.map(e=>{
+    const noSev=noSevForSlot(e.stepId);
+    if(e.id===editingEntryId){
+      const typeBtns=TYPES.map(t=>`<button class="type-btn edit-type-btn${t===editEntry.type?' sel':''}" data-type="${t}" style="background:${T.bg[t]};color:${T.fg[t]}" onclick="setEditType('${t}')">${T.icon[t]} ${t}</button>`).join('');
+      const sevBtns=[1,2,3,4,5].map(n=>`<button class="sev-btn edit-sev-btn sev-${n}${n===editEntry.sev?' sel':''}" style="background:${SEV.bg[n]};color:${SEV.fg[n]}" onclick="setEditSev(${n})">${n}</button>`).join('');
+      return`<div class="entry-row" style="padding:12px 0;flex-direction:column;gap:10px;border-bottom:1px solid var(--border);background:#fafaf8">
+        <div style="display:flex;gap:7px;flex-wrap:wrap">${typeBtns}</div>
+        ${noSev?'':`<div id="edit-sev-row" style="${editEntry.type!=='Problem'?'display:none':''}">
+          <div style="font-size:12px;color:var(--text2);font-weight:600;margin-bottom:6px" id="edit-sev-lbl">Schweregrad: ${editEntry.sev} – ${SEV.label[editEntry.sev]}</div>
+          <div style="display:flex;gap:6px">${sevBtns}</div>
+        </div>`}
+        <textarea id="edit-txt-${e.id}" rows="3" style="width:100%">${esc(editEntry.text)}</textarea>
+        <div style="display:flex;gap:8px;justify-content:flex-end">
+          <button onclick="cancelEditEntry()">Abbrechen</button>
+          <button class="btn-primary" onclick="saveEditEntry('${e.id}')">Speichern</button>
+        </div>
+      </div>`;
+    }
+    return`<div class="entry-row" style="padding:9px 0">
+      ${e.type?`<span class="entry-icon" style="background:${T.bg[e.type]};color:${T.fg[e.type]};font-size:11px">${T.icon[e.type]} ${e.type}</span>`:``}
+      <div style="flex:1;min-width:0">
+        ${(!noSev&&e.severity)?`<div style="margin-bottom:3px"><span class="sev-pill" style="background:${SEV.bg[e.severity]};color:${SEV.fg[e.severity]}">SG ${e.severity} – ${SEV.label[e.severity]}</span></div>`:''}
+        <div style="font-size:14px;line-height:1.5">${esc(e.text)}</div>
+        <div style="font-size:11px;color:var(--text3);margin-top:3px;font-family:'IBM Plex Mono',monospace">${fmtTime(e.timestamp)}</div>
+      </div>
+      <div style="display:flex;gap:4px;flex-shrink:0">
+        <button class="btn-ghost btn-sm" onclick="startEditEntry('${e.id}')" style="font-size:13px;color:var(--text2)" title="Bearbeiten">✎</button>
+        <button class="btn-ghost btn-sm" onclick="delLiveEntry('${e.id}')" style="font-size:14px;color:var(--text3)" title="Löschen">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function goSessTest(id){ activeSessId=id; stepInputs={}; editingEntryId=null; show('session-test'); renderSessTest(); }
+
+function renderSessTest(){
+  const s=activeSess(); if(!s){renderBatteries();return}
+  const b=batteries.find(x=>x.id===s.batteryId);
+  const steps=b?.steps||[];
+  const allEntries=s.entries||[];
+
+  // Build slots grouped by chapter
+  let slotCards='';
+  CHAPTERS.forEach(ch=>{
+    const chSteps=steps.filter(s=>(s.chapter||1)===ch.id);
+    if(chSteps.length===0)return;
+    slotCards+=`<div style="display:inline-block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:4px 14px;border-radius:99px;background:${CH_BG[ch.id]};color:${CH_FG[ch.id]};margin:28px 0 10px">${ch.label}</div>`;
+    chSteps.forEach((st,idx)=>{
+      const slot={id:st.id,title:st.title,desc:st.description,isStep:true};
+      const globalIdx=steps.indexOf(st);
+      const slotEntries=allEntries.filter(e=>e.stepId===slot.id);
+      const si=getSI(slot.id);
+      const typeBtns=TYPES.map(t=>`<button class="type-btn${t===si.type?' sel':''}" data-type="${t}" style="background:${T.bg[t]};color:${T.fg[t]}" onclick="setSIType('${slot.id}','${t}')">${T.icon[t]} ${t}</button>`).join('');
+      const sevBtns=[1,2,3,4,5].map(n=>`<button class="sev-btn sev-${n}${n===si.sev?' sel':''}" style="background:${SEV.bg[n]};color:${SEV.fg[n]}" onclick="setSISev('${slot.id}',${n})">${n}</button>`).join('');
+      const entryRows=renderEntryRows(slotEntries);      const countBadge=slotEntries.length>0?`<span style="background:${CH_BG[ch.id]};color:${CH_FG[ch.id]};font-size:12px;font-weight:600;padding:2px 9px;border-radius:99px">${slotEntries.length}</span>`:'';
+      slotCards+=`<div class="card" style="padding:0;overflow:hidden;margin-bottom:20px">
+        <div style="background:var(--surface2);padding:13px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:12px">
+          <div class="step-nr" style="flex-shrink:0;background:${CH_BG[ch.id]};color:${CH_FG[ch.id]}">${globalIdx+1}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-weight:600;font-size:15px">${esc(slot.title)}</div>
+            ${slot.desc?`<div style="font-size:12px;color:var(--text2);margin-top:2px">${esc(slot.desc)}</div>`:''}
+          </div>
+          ${countBadge}
+        </div>
+        ${slotEntries.length>0?`<div style="padding:4px 20px;border-bottom:1px solid var(--border)">${entryRows}</div>`:''}
+        <div style="padding:16px 20px">
+          <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px">${typeBtns}</div>
+          <div id="sev-row-${slot.id}" style="${(si.type!=='Problem'||noSevForSlot(slot.id))?'display:none;':''}margin-bottom:12px">
+            <div style="font-size:12px;color:var(--text2);font-weight:600;margin-bottom:6px" id="sev-lbl-${slot.id}">Schweregrad: ${si.sev} – ${SEV.label[si.sev]}</div>
+            <div style="display:flex;gap:6px">${sevBtns}</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:flex-end">
+            <textarea id="txt-${slot.id}" rows="2" placeholder="Beobachtung hinzufügen… (Strg+Enter)"
+              style="flex:1;min-width:0"
+              onkeydown="if(event.ctrlKey&&event.key==='Enter'){event.preventDefault();addStepEntry('${slot.id}')}"
+              oninput="getSI('${slot.id}').text=this.value">${esc(si.text)}</textarea>
+            <button class="" onclick="addStepEntry('${slot.id}')" style="padding:9px 18px;white-space:nowrap;align-self:flex-end">+ Hinzufügen</button>
+          </div>
+        </div>
+      </div>`;
+    });
+  });
+  // General observations
+  const genEntries=allEntries.filter(e=>!e.stepId);
+  const siGen=getSI('general');
+  const genTypeBtns=TYPES.map(t=>`<button class="type-btn${t===siGen.type?' sel':''}" data-type="${t}" style="background:${T.bg[t]};color:${T.fg[t]}" onclick="setSIType('general','${t}')">${T.icon[t]} ${t}</button>`).join('');
+  const genSevBtns=[1,2,3,4,5].map(n=>`<button class="sev-btn sev-${n}${n===siGen.sev?' sel':''}" style="background:${SEV.bg[n]};color:${SEV.fg[n]}" onclick="setSISev('general',${n})">${n}</button>`).join('');
+  const genEntryRows=renderEntryRows(genEntries);
+  slotCards+=`<div style="display:inline-block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;padding:4px 14px;border-radius:99px;background:var(--surface2);color:var(--text2);margin:28px 0 10px">Allgemeine Beobachtungen</div>
+  <div class="card" style="padding:0;overflow:hidden;margin-bottom:20px">
+    ${genEntries.length>0?`<div style="padding:4px 20px;border-bottom:1px solid var(--border)">${genEntryRows}</div>`:''}
+    <div style="padding:16px 20px">
+      <div style="display:flex;gap:7px;flex-wrap:wrap;margin-bottom:12px">${genTypeBtns}</div>
+      <div id="sev-row-general" style="display:none;margin-bottom:12px">
+        <div style="font-size:12px;color:var(--text2);font-weight:600;margin-bottom:6px" id="sev-lbl-general">Schweregrad: ${siGen.sev} – ${SEV.label[siGen.sev]}</div>
+        <div style="display:flex;gap:6px">${genSevBtns}</div>
+      </div>
+      <div style="display:flex;gap:10px;align-items:flex-end">
+        <textarea id="txt-general" rows="2" placeholder="Allgemeine Beobachtung… (Strg+Enter)"
+          style="flex:1;min-width:0"
+          onkeydown="if(event.ctrlKey&&event.key==='Enter'){event.preventDefault();addStepEntry('general')}"
+          oninput="getSI('general').text=this.value">${esc(siGen.text)}</textarea>
+        <button class="" onclick="addStepEntry('general')" style="padding:9px 18px;white-space:nowrap;align-self:flex-end">+ Hinzufügen</button>
+      </div>
+    </div>
+  </div>`;
+
+  document.getElementById('v-session-test').innerHTML=`
+    <div class="page">
+      <button class="back-link" onclick="goBattDetail('${s.batteryId}')">← Zurück zur Studie</button>
+      <div class="hdr" style="margin-bottom:24px">
+        <div>
+          <div style="font-size:12px;color:var(--text3);margin-bottom:4px">${esc(b?.name||'')}</div>
+          <h2 style="margin-bottom:5px">${esc(s.personName)||'Session'}${s.personCode?' <span style="font-size:14px;font-weight:400;color:var(--text2)">('+esc(s.personCode)+')</span>':''}</h2>
+          <div style="display:flex;flex-wrap:wrap;gap:8px 24px;font-size:14px;color:var(--text2);margin-top:6px">
+            ${s.personNotes?`<span><span style="font-weight:600;color:var(--text)">Notizen</span> ${esc(s.personNotes)}</span>`:''}
+            ${s.date?`<span><span style="font-weight:600;color:var(--text)">Datum</span> ${fmtDate(s.date)}</span>`:''}
+            ${s.tester?`<span><span style="font-weight:600;color:var(--text)">Protokollant</span> ${esc(s.tester)}</span>`:''}
+            <span><span style="font-weight:600;color:var(--text)">Einträge</span> ${allEntries.length}</span>
+          </div>
+        </div>
+      </div>
+      ${slotCards}
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:24px">
+        <button class="btn-primary" onclick="goSessReport('${s.id}')">Speichern</button>
+      </div>
+    </div>`;
+}
+
+function setSIType(sid,t){
+  const si=getSI(sid);
+  si.type = si.type===t ? null : t; // toggle off if already selected
+  const card=document.getElementById('txt-'+sid)?.closest('.card');
+  if(card){
+    card.querySelectorAll('.type-btn').forEach(b=>{
+      const sel=b.dataset.type===si.type;
+      b.classList.toggle('sel',sel);
+      b.style.borderColor=sel?T.fg[b.dataset.type]:'transparent';
+    });
+    const row=document.getElementById('sev-row-'+sid);
+    if(row)row.style.display=(si.type==='Problem'&&!noSevForSlot(sid))?'':'none';
+  }
+}
+function setSISev(sid,n){
+  getSI(sid).sev=n;
+  const card=document.getElementById('txt-'+sid)?.closest('.card');
+  if(card){
+    card.querySelectorAll('.sev-btn').forEach(b=>b.classList.toggle('sel',b.textContent==n));
+    const lbl=document.getElementById('sev-lbl-'+sid);
+    if(lbl)lbl.textContent=`Schweregrad: ${n} – ${SEV.label[n]}`;
+  }
+}
+function addStepEntry(sid){
+  const s=activeSess(); if(!s)return;
+  const si=getSI(sid);
+  const txtEl=document.getElementById('txt-'+sid);
+  const txt=(txtEl?.value||si.text||'').trim();
+  if(!txt)return;
+  const entry={id:genId(),timestamp:ts(),type:si.type,text:txt,
+    severity:(si.type==='Problem'&&!noSevForSlot(sid))?si.sev:null,
+    stepId:sid==='general'?null:sid};
+  s.entries=[...(s.entries||[]),entry];
+  updSess(s);
+  si.text='';
+  renderSessTest();
+  setTimeout(()=>{const el=document.getElementById('txt-'+sid);if(el)el.focus();},20);
+}
+function startEditEntry(id){
+  const s=activeSess(); if(!s)return;
+  const e=(s.entries||[]).find(x=>x.id===id); if(!e)return;
+  editingEntryId=id;
+  editEntry={type:e.type, sev:e.severity||3, text:e.text};
+  renderSessTest();
+  setTimeout(()=>{const el=document.getElementById('edit-txt-'+id);if(el)el.focus();},20);
+}
+function setEditType(t){
+  editEntry.type = editEntry.type===t ? null : t;
+  document.querySelectorAll('.edit-type-btn').forEach(b=>{
+    const sel=b.dataset.type===editEntry.type;
+    b.classList.toggle('sel',sel);
+    b.style.borderColor=sel?T.fg[b.dataset.type]:'transparent';
+  });
+  const row=document.getElementById('edit-sev-row');
+  if(row)row.style.display=editEntry.type==='Problem'?'':'none';
+}
+function setEditSev(n){
+  editEntry.sev=n;
+  document.querySelectorAll('.edit-sev-btn').forEach(b=>b.classList.toggle('sel',b.textContent==n));
+  const lbl=document.getElementById('edit-sev-lbl');
+  if(lbl)lbl.textContent=`Schweregrad: ${n} – ${SEV.label[n]}`;
+}
+function saveEditEntry(id){
+  const s=activeSess(); if(!s)return;
+  const txtEl=document.getElementById('edit-txt-'+id);
+  const txt=(txtEl?.value||editEntry.text||'').trim();
+  if(!txt)return;
+  s.entries=(s.entries||[]).map(e=>e.id===id?{...e,type:editEntry.type,text:txt,severity:(editEntry.type==='Problem'&&!noSevForSlot(e.stepId))?editEntry.sev:null}:e);
+  updSess(s); editingEntryId=null; renderSessTest();
+}
+function cancelEditEntry(){
+  editingEntryId=null; renderSessTest();
+}
+function delLiveEntry(id){
+  ask('Eintrag löschen?', ()=>{
+    const s=activeSess(); if(!s)return;
+    s.entries=(s.entries||[]).filter(e=>e.id!==id);updSess(s);renderSessTest();
+  });
+}
+function finishSession(){
+  ask('Test als abgeschlossen markieren?', ()=>{
+    const s=activeSess();if(!s)return;
+    s.status='done';updSess(s);goSessReport(s.id);
+  }, 'Abschließen', 'btn-primary');
+}
+
+// ── Session report ────────────────────────────────────────────────────────────
+function goSessReport(id){activeSessId=id;show('session-report');renderSessReport()}
+function changeSessStatusFromReport(val){
+  const s=activeSess();if(!s)return;
+  s.status=val;updSess(s);renderSessReport();
+}
+function renderSessReport(){
+  const s=activeSess();if(!s){renderBatteries();return}
+  const b=batteries.find(x=>x.id===s.batteryId);
+  const steps=b?.steps||[];
+  const entries=s.entries||[];
+  const problems=entries.filter(e=>e.type==='Problem');
+  const avgSev=problems.length?(problems.reduce((a,e)=>a+e.severity,0)/problems.length).toFixed(1):null;
+  const stats=[
+    {val:entries.length,lbl:'Einträge',bg:'#eeedfc',fg:'#2d2a8a'},
+    {val:problems.length,lbl:'Probleme',bg:'#fee2e2',fg:'#7f1d1d'},
+    {val:avgSev||'–',lbl:'Ø Schweregrad',bg:'#fef9c3',fg:'#713f12'},
+    {val:entries.filter(e=>e.type==='Zitat').length,lbl:'Zitate',bg:'#dcfce7',fg:'#14532d'},
+  ];
+  // Shared fixed-width colgroup for consistent alignment across all cards
+  const COLGROUP = `<colgroup>
+    <col style="width:68px"><col style="width:115px"><col style="width:155px"><col style="width:190px"><col>
+  </colgroup>`;
+
+  // Build chapter cards
+  const chapterCards = (() => {
+    let html = '';
+    CHAPTERS.forEach(ch => {
+      const chEntries = entries
+        .filter(e => { const step=steps.find(st=>st.id===e.stepId); return step&&(step.chapter||1)===ch.id; })
+        .sort((a,b) => steps.findIndex(st=>st.id===a.stepId) - steps.findIndex(st=>st.id===b.stepId));
+      if(chEntries.length === 0) return;
+      const noSev = ch.id === 1;
+      const chRows = chEntries.map((e, i) => {
+        const step = steps.find(st => st.id === e.stepId);
+        const prevStep = i > 0 ? chEntries[i-1].stepId : null;
+        const newStepGroup = i > 0 && e.stepId !== prevStep;
+        const sepStyle = newStepGroup ? 'border-top:3px solid #b4b2a9' : '';
+        return`<tr>
+          <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text3);white-space:nowrap;${sepStyle}">${fmtTime(e.timestamp)}</td>
+          <td style="${sepStyle}">${e.type?`<span class="badge" style="background:${T.bg[e.type]};color:${T.fg[e.type]}">${T.icon[e.type]} ${e.type}</span>`:'–'}</td>
+          <td style="${sepStyle}">${noSev?'':e.severity?`<span class="sev-pill" style="background:${SEV.bg[e.severity]};color:${SEV.fg[e.severity]}">${e.severity} – ${SEV.label[e.severity]}</span>`:'–'}</td>
+          <td style="font-size:13px;color:var(--text2);${sepStyle}">${step?`${steps.indexOf(step)+1}. ${esc(step.title)}`:'–'}</td>
+          <td style="${sepStyle}">${esc(e.text)}</td>
+        </tr>`;
+      }).join('');
+      html += `<div class="card" style="padding:0;overflow:hidden;margin-bottom:14px">
+        <div style="padding:12px 20px;border-bottom:1px solid var(--border)">
+          <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">${ch.label}</span>
+          <span style="font-size:12px;color:var(--text3);margin-left:10px">${chEntries.length} Einträge</span>
+        </div>
+        <div style="overflow-x:auto"><table class="tbl" style="table-layout:fixed;width:100%">${COLGROUP}
+          <thead><tr><th>Zeit</th><th>Typ</th><th>${noSev?'':'Schweregrad'}</th><th>Schritt</th><th>Beobachtung</th></tr></thead>
+          <tbody>${chRows}</tbody>
+        </table></div>
+      </div>`;
+    });
+    // General entries (no step)
+    const genEntries = entries.filter(e => !e.stepId);
+    if(genEntries.length > 0){
+      const genRows = genEntries.map(e => `<tr>
+        <td style="font-family:'IBM Plex Mono',monospace;font-size:12px;color:var(--text3);white-space:nowrap">${fmtTime(e.timestamp)}</td>
+        <td>${e.type?`<span class="badge" style="background:${T.bg[e.type]};color:${T.fg[e.type]}">${T.icon[e.type]} ${e.type}</span>`:'–'}</td>
+        <td>${e.severity?`<span class="sev-pill" style="background:${SEV.bg[e.severity]};color:${SEV.fg[e.severity]}">${e.severity} – ${SEV.label[e.severity]}</span>`:'–'}</td>
+        <td style="font-size:13px;color:var(--text2)">–</td>
+        <td>${esc(e.text)}</td>
+      </tr>`).join('');
+      html += `<div class="card" style="padding:0;overflow:hidden;margin-bottom:14px">
+        <div style="padding:12px 20px;border-bottom:1px solid var(--border)">
+          <span style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.08em;color:var(--text2)">Allgemein</span>
+          <span style="font-size:12px;color:var(--text3);margin-left:10px">${genEntries.length} Einträge</span>
+        </div>
+        <div style="overflow-x:auto"><table class="tbl" style="table-layout:fixed;width:100%">${COLGROUP}
+          <thead><tr><th>Zeit</th><th>Typ</th><th>Schweregrad</th><th>Schritt</th><th>Beobachtung</th></tr></thead>
+          <tbody>${genRows}</tbody>
+        </table></div>
+      </div>`;
+    }
+    if(!html) html = `<div class="empty">Keine Einträge vorhanden</div>`;
+    return html;
+  })();
+  document.getElementById('v-session-report').innerHTML=`<div class="page">
+    <button class="back-link" onclick="goBattDetail('${s.batteryId}')">← Zurück zur Studie</button>
+    <div class="hdr" style="margin-bottom:22px">
+      <div>
+        <div style="font-size:12px;color:var(--text3);margin-bottom:4px">${esc(b?.name||'')}</div>
+        <h2 style="margin-bottom:5px">Bericht: ${esc(s.personName)||'Session'}${s.personCode?' <span style="font-size:14px;color:var(--text2)">('+esc(s.personCode)+')</span>':''}</h2>
+        <div style="display:flex;flex-wrap:wrap;gap:8px 24px;font-size:14px;color:var(--text2);margin-top:6px">
+          ${s.personNotes?`<span><span style="font-weight:600;color:var(--text)">Notizen</span> ${esc(s.personNotes)}</span>`:''}
+          ${s.date?`<span><span style="font-weight:600;color:var(--text)">Datum</span> ${fmtDate(s.date)}</span>`:''}
+          ${s.tester?`<span><span style="font-weight:600;color:var(--text)">Protokollant</span> ${esc(s.tester)}</span>`:''}
+          <span><span style="font-weight:600;color:var(--text)">Einträge</span> ${entries.length}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:22px;padding:14px 20px">
+      <label style="font-size:13px;color:var(--text2);font-weight:500;white-space:nowrap;display:flex;align-items:center;gap:8px">Status<select onchange="changeSessStatusFromReport(this.value)" style="font-size:13px;padding:7px 12px;border-radius:var(--r);width:auto">
+        <option value="planned"${s.status==='planned'?' selected':''}>Geplant</option>
+        <option value="active"${s.status==='active'?' selected':''}>Aktiv</option>
+        <option value="done"${s.status==='done'?' selected':''}>Abgeschlossen</option>
+      </select></label>
+      <div style="flex:1"></div>
+      <button onclick="goSessTest('${s.id}')">Test fortsetzen</button>
+      <button class="btn-primary" onclick="exportSessXLSX()">↓ Excel</button>
+      <button class="btn-primary" onclick="exportPDF()">↓ PDF</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px">
+      ${stats.map(st=>`<div class="stat-card" style="background:${st.bg}"><div class="stat-val" style="color:${st.fg}">${st.val}</div><div style="font-size:12px;font-weight:500;color:${st.fg};opacity:.8">${st.lbl}</div></div>`).join('')}
+    </div>
+
+    ${chapterCards}
+
+    <div class="card" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px;padding:14px 20px">
+      <label style="font-size:13px;color:var(--text2);font-weight:500;white-space:nowrap;display:flex;align-items:center;gap:8px">Status<select onchange="changeSessStatusFromReport(this.value)" style="font-size:13px;padding:7px 12px;border-radius:var(--r);width:auto">
+        <option value="planned"${s.status==='planned'?' selected':''}>Geplant</option>
+        <option value="active"${s.status==='active'?' selected':''}>Aktiv</option>
+        <option value="done"${s.status==='done'?' selected':''}>Abgeschlossen</option>
+      </select></label>
+      <div style="flex:1"></div>
+      <button onclick="goSessTest('${s.id}')">Test fortsetzen</button>
+      <button class="btn-primary" onclick="exportSessXLSX()">↓ Excel</button>
+      <button class="btn-primary" onclick="exportPDF()">↓ PDF</button>
+    </div>
+  </div>`;
+}
+function exportSessXLSX(){
+  const s=activeSess();if(!s)return;
+  const b=batteries.find(x=>x.id===s.batteryId);
+  const steps=b?.steps||[];
+  if(typeof XLSX==='undefined'){alert('Bitte mit Internetverbindung öffnen für Excel-Export.');return}
+  const wb=XLSX.utils.book_new();
+  const meta=[['Feld','Wert'],['Studie',b?.name||''],['Produkt',b?.product||''],['Testperson',s.personName],['Code',s.personCode],['Datum',s.date],['Protokollant',s.tester],['Notizen',s.personNotes],['Einträge',(s.entries||[]).length]];
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet(meta),'Info');
+  const hdr=['Zeit','Kapitel','Typ','Schweregrad','Schweregrad-Label','Schritt','Beobachtung'];
+  const rows=(s.entries||[]).map(e=>{
+    const step=steps.find(st=>st.id===e.stepId);
+    const ch=step?CHAPTERS.find(c=>c.id===(step.chapter||1)):null;
+    return[fmtTime(e.timestamp),ch?ch.label:'',e.type,e.severity||'',e.severity?SEV.label[e.severity]:'',step?`${steps.indexOf(step)+1}. ${step.title}`:'',e.text];
+  });
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([hdr,...rows]),'Protokoll');
+  XLSX.writeFile(wb,`Protokoll_${(b?.name||'Studie').replace(/\s+/g,'_')}_${(s.personName||'Session').replace(/\s+/g,'_')}_${s.date||'export'}.xlsx`);
+}
+
+function exportPDF(){
+  const s=activeSess();if(!s)return;
+  if(typeof window.jspdf==='undefined'){alert('Bitte mit Internetverbindung öffnen für PDF-Export.');return}
+  const b=batteries.find(x=>x.id===s.batteryId);
+  const steps=b?.steps||[];
+  const entries=s.entries||[];
+  const {jsPDF}=window.jspdf;
+  const doc=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const pW=210,mg=14,cW=pW-mg*2;
+  let y=mg;
+
+  const CH_PDF={
+    1:{fill:[238,237,252],text:[55,48,163]},
+    2:{fill:[204,251,241],text:[13,148,136]},
+    3:{fill:[224,242,254],text:[3,105,161]},
+    4:{fill:[253,242,248],text:[134,25,143]}
+  };
+  const T_PDF={
+    'Beobachtung':{fill:[219,234,254],text:[30,58,138]},
+    'Problem':{fill:[254,226,226],text:[127,29,29]},
+    'Zitat':{fill:[237,233,254],text:[59,16,133]},
+    'Lob':{fill:[220,252,231],text:[20,83,45]},
+    'Notiz':{fill:[243,244,246],text:[55,65,81]}
+  };
+  const SEV_PDF={
+    1:{fill:[187,247,208],text:[20,83,45]},2:{fill:[217,249,157],text:[54,83,20]},
+    3:{fill:[254,240,138],text:[113,63,18]},4:{fill:[254,215,170],text:[124,45,18]},
+    5:{fill:[254,202,202],text:[127,29,29]}
+  };
+
+  // Header bar
+  doc.setFillColor(45,42,138);
+  doc.rect(mg,y,cW,24,'F');
+  doc.setTextColor(255,255,255);
+  doc.setFontSize(13);doc.setFont('helvetica','bold');
+  doc.text(b?.name||'Studie',mg+5,y+9);
+  doc.setFontSize(10);doc.setFont('helvetica','normal');
+  doc.text(`${s.personName||'Session'}${s.personCode?' ('+s.personCode+')':''}`,mg+5,y+16);
+  const metaRight=[s.date?fmtDate(s.date):'',s.tester?'Protokollant: '+s.tester:''].filter(Boolean).join('   ');
+  doc.setFontSize(9);doc.text(metaRight,pW-mg-3,y+16,{align:'right'});
+  y+=28;
+
+  // Stat boxes
+  const problems=entries.filter(e=>e.type==='Problem');
+  const avgSev=problems.length?(problems.reduce((a,e)=>a+e.severity,0)/problems.length).toFixed(1):'–';
+  const stats=[['Einträge gesamt',String(entries.length)],[`Probleme`,String(problems.length)],['Ø Schweregrad',String(avgSev)],['Zitate',String(entries.filter(e=>e.type==='Zitat').length)]];
+  const bW=(cW-6)/4;
+  stats.forEach((st,i)=>{
+    const x=mg+i*(bW+2);
+    doc.setFillColor(238,237,252);doc.roundedRect(x,y,bW,16,2,2,'F');
+    doc.setTextColor(45,42,138);
+    doc.setFontSize(15);doc.setFont('helvetica','bold');
+    doc.text(st[1],x+bW/2,y+9,{align:'center'});
+    doc.setFontSize(7.5);doc.setFont('helvetica','normal');
+    doc.text(st[0],x+bW/2,y+14,{align:'center'});
+  });
+  y+=21;
+
+  // Chapter sections
+  CHAPTERS.forEach(ch=>{
+    const chEntries=entries.filter(e=>{
+      const step=steps.find(st=>st.id===e.stepId);
+      return step&&(step.chapter||1)===ch.id;
+    });
+    if(chEntries.length===0)return;
+    const cc=CH_PDF[ch.id];
+    const noSev=ch.id===1;
+
+    // Chapter heading
+    doc.setFillColor(...cc.fill);doc.rect(mg,y,cW,8,'F');
+    doc.setTextColor(...cc.text);
+    doc.setFontSize(9.5);doc.setFont('helvetica','bold');
+    doc.text(ch.label,mg+3,y+5.5);
+    doc.setFontSize(8.5);doc.setFont('helvetica','normal');
+    doc.text(`${chEntries.length} Einträge`,pW-mg-3,y+5.5,{align:'right'});
+    y+=9;
+
+    const head=noSev?[['Zeit','Typ','Schritt','Beobachtung']]:[['Zeit','Typ','Schweregrad','Schritt','Beobachtung']];
+    const body=chEntries.map(e=>{
+      const step=steps.find(st=>st.id===e.stepId);
+      return[
+        fmtTime(e.timestamp),
+        e.type||'–',
+        ...(noSev?[]:[e.severity?`${e.severity} – ${SEV.label[e.severity]}`:'–']),
+        step?`${steps.indexOf(step)+1}. ${step.title}`:'–',
+        e.text||''
+      ];
+    });
+
+    const colNoSev={0:{cellWidth:16},1:{cellWidth:26},2:{cellWidth:38},3:{cellWidth:'auto'}};
+    const colSev  ={0:{cellWidth:16},1:{cellWidth:26},2:{cellWidth:34},3:{cellWidth:36},4:{cellWidth:'auto'}};
+
+    doc.autoTable({
+      startY:y, head, body,
+      margin:{left:mg,right:mg},
+      styles:{fontSize:8,cellPadding:2.5,overflow:'linebreak',valign:'top'},
+      headStyles:{fillColor:[240,240,245],textColor:[60,60,80],fontStyle:'bold',fontSize:8},
+      columnStyles:noSev?colNoSev:colSev,
+      didParseCell(data){
+        if(data.section!=='body')return;
+        if(data.column.index===1){
+          const tc=T_PDF[data.cell.raw];
+          if(tc){data.cell.styles.fillColor=tc.fill;data.cell.styles.textColor=tc.text;}
+        }
+        if(!noSev&&data.column.index===2){
+          const n=parseInt(data.cell.raw);
+          const sc=SEV_PDF[n];
+          if(sc){data.cell.styles.fillColor=sc.fill;data.cell.styles.textColor=sc.text;}
+        }
+      }
+    });
+    y=doc.lastAutoTable.finalY+6;
+  });
+
+  // General entries
+  const genEntries=entries.filter(e=>!e.stepId);
+  if(genEntries.length>0){
+    doc.setFillColor(240,240,240);doc.rect(mg,y,cW,8,'F');
+    doc.setTextColor(80,80,80);
+    doc.setFontSize(9.5);doc.setFont('helvetica','bold');
+    doc.text('Allgemeine Beobachtungen',mg+3,y+5.5);
+    y+=9;
+    const genBody=genEntries.map(e=>[fmtTime(e.timestamp),e.type||'–',e.severity?`${e.severity} – ${SEV.label[e.severity]}`:'–','–',e.text||'']);
+    doc.autoTable({
+      startY:y,head:[['Zeit','Typ','Schweregrad','Schritt','Beobachtung']],body:genBody,
+      margin:{left:mg,right:mg},
+      styles:{fontSize:8,cellPadding:2.5,overflow:'linebreak',valign:'top'},
+      headStyles:{fillColor:[240,240,245],textColor:[60,60,80],fontStyle:'bold',fontSize:8},
+      columnStyles:{0:{cellWidth:16},1:{cellWidth:26},2:{cellWidth:34},3:{cellWidth:36},4:{cellWidth:'auto'}},
+      didParseCell(data){
+        if(data.section==='body'&&data.column.index===1){
+          const tc=T_PDF[data.cell.raw];if(tc){data.cell.styles.fillColor=tc.fill;data.cell.styles.textColor=tc.text;}
+        }
+      }
+    });
+    y=doc.lastAutoTable.finalY+6;
+  }
+
+  // Page numbers
+  const pages=doc.internal.getNumberOfPages();
+  for(let i=1;i<=pages;i++){
+    doc.setPage(i);
+    doc.setFontSize(8);doc.setTextColor(160,160,160);
+    doc.text('Usability Protokoll-Tool',mg,294);
+    doc.text(`Seite ${i} von ${pages}`,pW-mg,294,{align:'right'});
+  }
+
+  doc.save(`Protokoll_${(b?.name||'Studie').replace(/\s+/g,'_')}_${(s.personName||'Session').replace(/\s+/g,'_')}_${s.date||'export'}.pdf`);
+}
+
+
+load();renderBatteries();
+</script>
+
+<div id="confirm-overlay" class="hidden">
+  <div id="confirm-box">
+    <div id="confirm-msg"></div>
+    <div id="confirm-btns">
+      <button id="confirm-cancel">Abbrechen</button>
+      <button id="confirm-ok" class="btn-danger">Löschen</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function ask(msg, onOk, okLabel='Löschen', okCls='btn-danger'){
+  document.getElementById('confirm-msg').textContent=msg;
+  const ok=document.getElementById('confirm-ok');
+  ok.textContent=okLabel; ok.className=okCls;
+  document.getElementById('confirm-overlay').classList.remove('hidden');
+  const cleanup=()=>document.getElementById('confirm-overlay').classList.add('hidden');
+  ok.onclick=()=>{cleanup();onOk();};
+  document.getElementById('confirm-cancel').onclick=cleanup;
+}
+</script>
+</html>
