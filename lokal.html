@@ -712,6 +712,7 @@ function finishSession(){
 function goSessReport(id){activeSessId=id;show('session-report');renderSessReport()}
 function changeSessStatusFromReport(val){
   const s=activeSess();if(!s)return;
+  if(val==='planned'&&(s.status==='active'||s.status==='done'))return;
   s.status=val;updSess(s);renderSessReport();
 }
 function renderSessReport(){
@@ -812,8 +813,8 @@ function renderSessReport(){
       </select></label>
       <div style="flex:1"></div>
       <button onclick="goSessTest('${s.id}')">Test fortsetzen</button>
-      <button class="btn-primary" onclick="exportSessXLSX()">↓ Excel</button>
-      <button class="btn-primary" onclick="exportPDF()">↓ PDF</button>
+      <button onclick="exportSessXLSX()" style="padding:8px 10px;display:inline-flex;align-items:center" title="Excel exportieren"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg></button>
+      <button onclick="exportPDF()" style="padding:8px 10px;display:inline-flex;align-items:center" title="PDF exportieren"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h1a2 2 0 0 1 0 4H9v-4"/><line x1="15" y1="13" x2="15" y2="17"/><line x1="13" y1="15" x2="17" y2="15"/></svg></button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px">
       ${stats.map(st=>`<div class="stat-card" style="background:${st.bg}"><div class="stat-val" style="color:${st.fg}">${st.val}</div><div style="font-size:12px;font-weight:500;color:${st.fg};opacity:.8">${st.lbl}</div></div>`).join('')}
@@ -829,8 +830,8 @@ function renderSessReport(){
       </select></label>
       <div style="flex:1"></div>
       <button onclick="goSessTest('${s.id}')">Test fortsetzen</button>
-      <button class="btn-primary" onclick="exportSessXLSX()">↓ Excel</button>
-      <button class="btn-primary" onclick="exportPDF()">↓ PDF</button>
+      <button onclick="exportSessXLSX()" style="padding:8px 10px;display:inline-flex;align-items:center" title="Excel exportieren"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg></button>
+      <button onclick="exportPDF()" style="padding:8px 10px;display:inline-flex;align-items:center" title="PDF exportieren"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h1a2 2 0 0 1 0 4H9v-4"/><line x1="15" y1="13" x2="15" y2="17"/><line x1="13" y1="15" x2="17" y2="15"/></svg></button>
     </div>
   </div>`;
 }
