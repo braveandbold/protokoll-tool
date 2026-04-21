@@ -42,7 +42,6 @@ textarea{resize:vertical}
 .field{margin-bottom:15px}
 .grid2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 .badge{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;white-space:nowrap}
-.badge-planned{background:#eeedfc;color:#2d2a8a}
 .badge-active{background:#fff3e0;color:#8a4a00}
 .badge-done{background:#e0f5ec;color:#0a5c44}
 .back-link{background:none;border:none;color:var(--text2);font-size:13px;cursor:pointer;padding:0 0 20px;display:flex;align-items:center;gap:5px;font-family:'IBM Plex Sans',sans-serif}
@@ -61,10 +60,6 @@ textarea{resize:vertical}
 .step-item{display:flex;align-items:flex-start;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
 .step-item:last-child{border-bottom:none}
 .step-nr{width:28px;height:28px;border-radius:50%;background:var(--accent-bg);color:var(--accent-fg);display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:600;flex-shrink:0;margin-top:1px}
-/* Live mode */
-.topbar{background:var(--live-bg);color:var(--live-bar);padding:12px 24px;display:flex;align-items:center;justify-content:space-between;gap:12px;position:sticky;top:0;z-index:100}
-.live-panel{max-width:940px;margin:0 auto;padding:22px 24px;display:grid;grid-template-columns:360px 1fr;gap:22px;align-items:start}
-.live-dot{font-size:12px;font-weight:700;padding:4px 12px;border-radius:99px;background:#ff443320;color:#ff6655;letter-spacing:.04em}
 /* Type & sev buttons */
 .type-btn{padding:6px 13px;border-radius:99px;font-size:13px;font-weight:600;border:2px solid transparent;cursor:pointer;transition:opacity .12s,border-color .12s;opacity:.5}
 .type-btn.sel{opacity:1;border-color:currentColor}
@@ -115,7 +110,6 @@ const SEV = {label:{1:'Sehr gering',2:'Gering',3:'Mittel',4:'Hoch',5:'Kritisch'}
   fg:{1:'#14532d',2:'#365314',3:'#713f12',4:'#7c2d12',5:'#7f1d1d'}};
 const TYPES = ['Beobachtung','Problem','Zitat','Lob','Notiz'];
 const T = {
-  cls:  {Beobachtung:'t-obs',Problem:'t-prob',Zitat:'t-quot',Lob:'t-lob',Notiz:'t-note'},
   bg:   {Beobachtung:'#dbeafe',Problem:'#fee2e2',Zitat:'#ede9fe',Lob:'#dcfce7',Notiz:'#f3f4f6'},
   fg:   {Beobachtung:'#1e3a8a',Problem:'#7f1d1d',Zitat:'#3b1085',Lob:'#14532d',Notiz:'#374151'},
   icon: {Beobachtung:'◉',Problem:'▲',Zitat:'❝',Lob:'✓',Notiz:'○'}
@@ -132,9 +126,8 @@ const CH_FG = {1:'#3730a3',2:'#0d9488',3:'#0369a1',4:'#86198f'};
 
 // ── State ────────────────────────────────────────────────────────────────────
 let batteries = [], sessions = [];
+let _editSnapshot = null, _editDirty = false;
 let activeBattId = null, activeSessId = null;
-let liveType = 'Beobachtung', liveSev = 3, liveStepId = null;
-
 const genId = () => Date.now().toString(36)+Math.random().toString(36).slice(2,6);
 const ts = () => new Date().toISOString();
 const fmtTime = iso => iso?new Date(iso).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}):'';
@@ -244,10 +237,10 @@ function renderBattDetail(){
         <div style="display:flex;gap:10px;align-items:center;flex-shrink:0" onclick="event.stopPropagation()">
           <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text2);cursor:pointer">
             ${s.status==='done'?'Abgeschlossen':'Aktiv'}
-            <span style="position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0">
-              <input type="checkbox" ${s.status==='done'?'checked':''} onchange="toggleSessStatus('${s.id}',this.checked)" style="opacity:0;width:0;height:0;position:absolute">
+<span style="position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0;cursor:pointer">
+              <input type="checkbox" ${s.status==='done'?'checked':''} onchange="toggleSessStatus('${s.id}',this.checked)" style="position:absolute;opacity:0;width:100%;height:100%;margin:0;cursor:pointer;z-index:1">
               <span style="position:absolute;inset:0;border-radius:20px;background:${s.status==='done'?'#0d9488':'var(--border2)'};transition:background .2s"></span>
-              <span style="position:absolute;top:3px;left:${s.status==='done'?'19':'3'}px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .2s"></span>
+              <span style="position:absolute;top:3px;left:${s.status==='done'?'19':'3'}px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .15s"></span>
             </span>
           </label>
           <button class="btn-sm" onclick="goSessReport('${s.id}')" title="Bericht" style="padding:5px 8px;line-height:1;display:flex;align-items:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></button>
@@ -300,11 +293,6 @@ function toggleLeitfaden(){
   body.style.display=open?'':'none';
   if(chevron)chevron.style.transform=open?'rotate(-180deg)':'rotate(0deg)';
 }
-function startSessionDirect(id){
-  activeSessId=id;
-  const s=activeSess();if(!s)return;
-  s.status='active';updSess(s);goSessTest(id);
-}
 function toggleSessStatus(id, done){
   const s=sessions.find(x=>x.id===id);if(!s)return;
   s.status=done?'done':'active';updSess(s);renderBattDetail();
@@ -327,6 +315,8 @@ function delSess(id){
 function goBattEdit(id){activeBattId=id;show('battery-edit');renderBattEdit()}
 function renderBattEdit(){
   const b=activeBatt();if(!b){renderBatteries();return}
+  _editSnapshot=JSON.stringify(b);
+  _editDirty=false;
   const steps=b.steps||[];
 
   const chapterCards=CHAPTERS.map(ch=>{
@@ -351,9 +341,8 @@ function renderBattEdit(){
   }).join('');
 
   document.getElementById('v-battery-edit').innerHTML=`<div class="page-narrow">
-    <button class="back-link" onclick="goBattDetail('${b.id}')">← Zurück zur Studie</button>
-    <h2 style="margin-bottom:5px">${esc(b.name)||'Neue Studie'}</h2>
-    <p style="color:var(--text2);font-size:13px;margin-bottom:24px">Wird automatisch gespeichert.</p>
+    <button class="back-link" onclick="battEditBack('${b.id}')">← Zurück zur Studie</button>
+    <h2 style="margin-bottom:20px">${esc(b.name)||'Neue Studie'}</h2>
 
     <div class="card">
       <h3>Allgemeine Informationen</h3>
@@ -373,14 +362,18 @@ function renderBattEdit(){
     ${chapterCards}
 
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
-      <button onclick="saveBattEdit();goBattDetail('${b.id}')">Speichern &amp; Zurück</button>
+      <button onclick="saveBattEdit();_editDirty=false;goBattDetail('${b.id}')">Speichern &amp; Zurück</button>
     </div>
   </div>`;
 
   ['be-name','be-product','be-link','be-desc'].forEach(id=>{
     const el=document.getElementById(id);
-    if(el)el.addEventListener('input',saveBattEditAuto);
+    if(el)el.addEventListener('input',()=>{_editDirty=true;});
   });
+}
+function battEditBack(id){
+  if(!_editDirty){goBattDetail(id);return;}
+  askSave(()=>{saveBattEdit();goBattDetail(id);},()=>{const snap=JSON.parse(_editSnapshot);batteries=batteries.map(b=>b.id===snap.id?snap:b);save();goBattDetail(id);});
 }
 function saveBattEditAuto(){
   const b=activeBatt();if(!b)return;
@@ -388,11 +381,11 @@ function saveBattEditAuto(){
   b.product=document.getElementById('be-product')?.value||'';
   b.link=document.getElementById('be-link')?.value||'';
   b.description=document.getElementById('be-desc')?.value||'';
-  updBatt(b);
+  batteries=batteries.map(x=>x.id===b.id?b:x); // in-memory only
   const h=document.querySelector('#v-battery-edit h2');
   if(h)h.textContent=b.name||'Neue Studie';
 }
-function saveBattEdit(){saveBattEditAuto()}
+function saveBattEdit(){saveBattEditAuto();save();}
 function addStep(chapterId){
   const b=activeBatt();if(!b)return;
   saveBattEditAuto();
@@ -409,17 +402,20 @@ function removeStep(stepId){
 }
 function updateStep(stepId,field,val){
   const b=activeBatt();if(!b)return;
+  _editDirty=true;
   b.steps=(b.steps||[]).map(s=>s.id===stepId?{...s,[field]:val}:s);
-  updBatt(b);
+  batteries=batteries.map(x=>x.id===b.id?b:x); // update in-memory only, no save()
 }
 
 // ── Session setup ─────────────────────────────────────────────────────────────
 function goSessSetup(id){activeSessId=id;show('session-setup');renderSessSetup()}
 function renderSessSetup(){
   const s=activeSess();if(!s){renderBatteries();return}
+  _editSnapshot=JSON.stringify(s);
+  _editDirty=false;
   const b=batteries.find(x=>x.id===s.batteryId);
   document.getElementById('v-session-setup').innerHTML=`<div class="page-narrow">
-    <button class="back-link" onclick="goBattDetail('${s.batteryId}')">← Zurück zur Studie</button>
+    <button class="back-link" onclick="sessSetupBack('${s.batteryId}')">← Zurück zur Studie</button>
     <div style="margin-bottom:5px;font-size:12px;color:var(--text3)">${esc(b?.name||'')}</div>
     <h2 style="margin-bottom:20px">${esc(s.personName)||'Neue Testsession'}</h2>
 
@@ -452,15 +448,19 @@ function renderSessSetup(){
     </div>
 
     <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:8px">
-      <button onclick="saveSessSetup();goBattDetail('${s.batteryId}')">Abbrechen</button>
-      <button class="btn-primary" onclick="saveSessSetup();goBattDetail('${s.batteryId}')">Speichern</button>
+      <button onclick="const snap=JSON.parse(_editSnapshot);sessions=sessions.map(s=>s.id===snap.id?snap:s);goBattDetail('${s.batteryId}')">Abbrechen</button>
+      <button class="btn-primary" onclick="saveSessSetup();_editDirty=false;goBattDetail('${s.batteryId}')">Speichern</button>
     </div>
   </div>`;
 
   ['ss-name','ss-code','ss-notes','ss-date','ss-tester'].forEach(id=>{
     const el=document.getElementById(id);
-    if(el)el.addEventListener('input',saveSessSetupAuto);
+    if(el)el.addEventListener('input',()=>{_editDirty=true;});
   });
+}
+function sessSetupBack(battId){
+  if(!_editDirty){goBattDetail(battId);return;}
+  askSave(()=>{saveSessSetup();goBattDetail(battId);},()=>{const snap=JSON.parse(_editSnapshot);sessions=sessions.map(s=>s.id===snap.id?snap:s);save();goBattDetail(battId);});
 }
 function saveSessSetupAuto(){
   const s=activeSess();if(!s)return;
@@ -469,11 +469,11 @@ function saveSessSetupAuto(){
   s.personNotes=document.getElementById('ss-notes')?.value||'';
   s.date=document.getElementById('ss-date')?.value||'';
   s.tester=document.getElementById('ss-tester')?.value||'';
-  updSess(s);
+  sessions=sessions.map(x=>x.id===s.id?s:x); // in-memory only
   const h=document.querySelector('#v-session-setup h2');
   if(h)h.textContent=s.personName||'Neue Testsession';
 }
-function saveSessSetup(){saveSessSetupAuto()}
+function saveSessSetup(){saveSessSetupAuto();save();}
 function setSessStatus(val){
   const s=activeSess();if(!s)return;
   s.status=val;updSess(s);
@@ -729,7 +729,9 @@ function finishSession(){
 function goSessReport(id){activeSessId=id;show('session-report');renderSessReport()}
 function changeSessStatusFromReport(val){
   const s=activeSess();if(!s)return;
-  s.status=val;updSess(s);renderSessReport();
+  s.status=val;updSess(s);
+  const active=document.getElementById('v-session-test').classList.contains('hidden');
+  if(active)renderSessReport();else renderSessTest();
 }
 function renderSessReport(){
   const s=activeSess();if(!s){renderBatteries();return}
@@ -1015,6 +1017,7 @@ load();renderBatteries();
     <div id="confirm-msg"></div>
     <div id="confirm-btns">
       <button id="confirm-cancel">Abbrechen</button>
+      <button id="confirm-discard">Verwerfen</button>
       <button id="confirm-ok" class="btn-danger">Löschen</button>
     </div>
   </div>
@@ -1024,10 +1027,24 @@ load();renderBatteries();
 function ask(msg, onOk, okLabel='Löschen', okCls='btn-danger'){
   document.getElementById('confirm-msg').textContent=msg;
   const ok=document.getElementById('confirm-ok');
+  const discard=document.getElementById('confirm-discard');
   ok.textContent=okLabel; ok.className=okCls;
+  discard.style.display='none';
   document.getElementById('confirm-overlay').classList.remove('hidden');
   const cleanup=()=>document.getElementById('confirm-overlay').classList.add('hidden');
   ok.onclick=()=>{cleanup();onOk();};
+  document.getElementById('confirm-cancel').onclick=cleanup;
+}
+function askSave(onSave, onDiscard){
+  document.getElementById('confirm-msg').textContent='Möchtest du die Änderungen speichern?';
+  const ok=document.getElementById('confirm-ok');
+  const discard=document.getElementById('confirm-discard');
+  ok.textContent='Speichern'; ok.className='btn-primary';
+  discard.style.display=''; discard.textContent='Verwerfen';
+  document.getElementById('confirm-overlay').classList.remove('hidden');
+  const cleanup=()=>{document.getElementById('confirm-overlay').classList.add('hidden');discard.style.display='none';};
+  ok.onclick=()=>{cleanup();onSave();};
+  discard.onclick=()=>{cleanup();onDiscard();};
   document.getElementById('confirm-cancel').onclick=cleanup;
 }
 </script>
