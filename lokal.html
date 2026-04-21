@@ -158,7 +158,7 @@ function renderBatteries(){
     :batteries.map(b=>{
       const slist=battSessions(b.id);
       const done=slist.filter(s=>s.status==='done').length;
-      const active=slist.filter(s=>s.status==='active').length;
+      const active=slist.filter(s=>s.status!=='done').length;
       return`<div class="batt-card" onclick="goBattDetail('${b.id}')">
         <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
           <div style="flex:1;min-width:0">
@@ -207,7 +207,7 @@ function goBattDetail(id){activeBattId=id;show('battery-detail');renderBattDetai
 function renderBattDetail(){
   const b=activeBatt();if(!b){renderBatteries();return}
   const slist=battSessions(b.id);
-  const STATUS={planned:{label:'Geplant',cls:'badge-planned'},active:{label:'Aktiv',cls:'badge-active'},done:{label:'Abgeschlossen',cls:'badge-done'}};
+  const STATUS={active:{label:'Aktiv',cls:'badge-active'},done:{label:'Abgeschlossen',cls:'badge-done'}};
   const stepsList=(()=>{
     const steps=b.steps||[];
     if(steps.length===0) return`<div style="color:var(--text3);font-size:13px;padding:6px 0">Keine Schritte definiert – <button class="btn-ghost btn-sm" style="padding:0" onclick="goBattEdit('${b.id}')">Leitfaden bearbeiten</button></div>`;
@@ -223,14 +223,16 @@ function renderBattDetail(){
   const sessRows=slist.length===0
     ?`<div class="empty" style="padding:32px">Noch keine Sessions – füge die erste Person hinzu</div>`
     :slist.map((s,i)=>{
-      const st=STATUS[s.status]||STATUS.planned;
+      const st=STATUS[s.status]||STATUS.active;
       const cnt=(s.entries||[]).length;
       return`<div class="sess-row" onclick="openSession('${s.id}')">
         <div style="width:24px;height:24px;border-radius:50%;background:var(--surface2);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:600;color:var(--text2);flex-shrink:0">${i+1}</div>
+        <div style="flex-shrink:0" onclick="event.stopPropagation()">
+          <button class="btn-sm" onclick="goSessSetup('${s.id}')" title="Bearbeiten" style="padding:5px 8px;line-height:1;display:flex;align-items:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
+        </div>
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
             <span style="font-weight:500">${esc(s.personName)||'Person '+(i+1)}</span>
-            <span class="badge ${st.cls}">${st.label}</span>
           </div>
           <div style="font-size:12px;color:var(--text3);display:flex;gap:12px;margin-top:3px;flex-wrap:wrap">
             ${s.personCode?`<span style="font-family:'IBM Plex Mono',monospace">${esc(s.personCode)}</span>`:''}
@@ -239,9 +241,16 @@ function renderBattDetail(){
             <span>${cnt} Einträge</span>
           </div>
         </div>
-        <div style="display:flex;gap:6px;flex-shrink:0" onclick="event.stopPropagation()">
-          <button class="btn-sm" onclick="goSessSetup('${s.id}')" title="Bearbeiten" style="padding:5px 8px;line-height:1;display:flex;align-items:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>
-          ${(s.status==='active'||s.status==='done')?`<button class="btn-sm" onclick="goSessReport('${s.id}')" title="Bericht" style="padding:5px 8px;line-height:1;display:flex;align-items:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></button>`:''}
+        <div style="display:flex;gap:10px;align-items:center;flex-shrink:0" onclick="event.stopPropagation()">
+          <label style="display:flex;align-items:center;gap:7px;font-size:13px;color:var(--text2);cursor:pointer">
+            ${s.status==='done'?'Abgeschlossen':'Aktiv'}
+            <span style="position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0">
+              <input type="checkbox" ${s.status==='done'?'checked':''} onchange="toggleSessStatus('${s.id}',this.checked)" style="opacity:0;width:0;height:0;position:absolute">
+              <span style="position:absolute;inset:0;border-radius:20px;background:${s.status==='done'?'#0d9488':'var(--border2)'};transition:background .2s"></span>
+              <span style="position:absolute;top:3px;left:${s.status==='done'?'19':'3'}px;width:14px;height:14px;border-radius:50%;background:#fff;transition:left .2s"></span>
+            </span>
+          </label>
+          <button class="btn-sm" onclick="goSessReport('${s.id}')" title="Bericht" style="padding:5px 8px;line-height:1;display:flex;align-items:center"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></button>
           <button class="btn-sm btn-danger" onclick="delSess('${s.id}')" title="Session löschen" style="padding:5px 9px;line-height:1;display:inline-flex;align-items:center"><svg width="14" height="14" viewBox="0 0 14 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 3.5h10M5.5 3.5V2.5a.5.5 0 01.5-.5h2a.5.5 0 01.5.5v1M5.5 6v4M8.5 6v4M3 3.5l.667 7.5A.5.5 0 004.165 11.5h5.67a.5.5 0 00.498-.5L11 3.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
         </div>
       </div>`;
@@ -296,13 +305,16 @@ function startSessionDirect(id){
   const s=activeSess();if(!s)return;
   s.status='active';updSess(s);goSessTest(id);
 }
+function toggleSessStatus(id, done){
+  const s=sessions.find(x=>x.id===id);if(!s)return;
+  s.status=done?'done':'active';updSess(s);renderBattDetail();
+}
 function openSession(id){
   const s=sessions.find(x=>x.id===id);if(!s)return;
-  if(s.status==='planned'){activeSessId=id;s.status='active';updSess(s);goSessTest(id);}
-  else goSessTest(id);
+  goSessTest(id);
 }
 function newSession(battId){
-  const s={id:genId(),batteryId:battId,personName:'',personCode:'',personNotes:'',date:new Date().toISOString().slice(0,10),tester:'',status:'planned',entries:[],createdAt:ts()};
+  const s={id:genId(),batteryId:battId,personName:'',personCode:'',personNotes:'',date:new Date().toISOString().slice(0,10),tester:'',status:'active',entries:[],createdAt:ts()};
   sessions=[...sessions,s];save();goSessSetup(s.id);
 }
 function delSess(id){
@@ -409,8 +421,7 @@ function renderSessSetup(){
   document.getElementById('v-session-setup').innerHTML=`<div class="page-narrow">
     <button class="back-link" onclick="goBattDetail('${s.batteryId}')">← Zurück zur Studie</button>
     <div style="margin-bottom:5px;font-size:12px;color:var(--text3)">${esc(b?.name||'')}</div>
-    <h2 style="margin-bottom:5px">${esc(s.personName)||'Neue Testsession'}</h2>
-    <p style="color:var(--text2);font-size:13px;margin-bottom:24px">Wird automatisch gespeichert.</p>
+    <h2 style="margin-bottom:20px">${esc(s.personName)||'Neue Testsession'}</h2>
 
     <div class="card">
       <h3>Testperson</h3>
@@ -434,7 +445,6 @@ function renderSessSetup(){
       </div>
       <div class="field"><label class="lbl">Status</label>
         <select id="ss-status" onchange="setSessStatus(this.value)">
-          <option value="planned"${s.status==='planned'?' selected':''}>Geplant</option>
           <option value="active"${s.status==='active'?' selected':''}>Aktiv</option>
           <option value="done"${s.status==='done'?' selected':''}>Abgeschlossen</option>
         </select>
@@ -613,11 +623,18 @@ function renderSessTest(){
             <span><span style="font-weight:600;color:var(--text)">Einträge</span> ${allEntries.length}</span>
           </div>
         </div>
+        <div style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:3px;gap:2px;flex-shrink:0;align-self:flex-start">
+          <button style="border:none;background:var(--surface);border-radius:7px;padding:7px 16px;font-size:13px;font-weight:600;color:var(--text)" disabled>Bearbeiten</button>
+          <button onclick="goSessReport('${s.id}')" style="border:none;background:transparent;border-radius:7px;padding:7px 16px;font-size:13px;color:var(--text2)">Bericht</button>
+        </div>
       </div>
       ${slotCards}
-      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:24px">
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:14px">
         <button onclick="goBattDetail('${s.batteryId}')">Speichern</button>
-        <button class="btn-primary" onclick="finishSession()">Test abschließen</button>
+        ${s.status==='done'
+          ?`<button class="btn-primary" onclick="goSessReport('${s.id}')">Bericht anzeigen</button>`
+          :`<button class="btn-primary" onclick="finishSession()">Test abschließen</button>`
+        }
       </div>
     </div>`;
 }
@@ -712,7 +729,6 @@ function finishSession(){
 function goSessReport(id){activeSessId=id;show('session-report');renderSessReport()}
 function changeSessStatusFromReport(val){
   const s=activeSess();if(!s)return;
-  if(val==='planned'&&(s.status==='active'||s.status==='done'))return;
   s.status=val;updSess(s);renderSessReport();
 }
 function renderSessReport(){
@@ -803,17 +819,16 @@ function renderSessReport(){
           <span><span style="font-weight:600;color:var(--text)">Einträge</span> ${entries.length}</span>
         </div>
       </div>
+      <div style="display:flex;background:var(--surface2);border:1px solid var(--border);border-radius:var(--r);padding:3px;gap:2px;flex-shrink:0;align-self:flex-start">
+        <button onclick="goSessTest('${s.id}')" style="border:none;background:transparent;border-radius:7px;padding:7px 16px;font-size:13px;color:var(--text2)">Bearbeiten</button>
+        <button style="border:none;background:var(--surface);border-radius:7px;padding:7px 16px;font-size:13px;font-weight:600;color:var(--text)" disabled>Bericht</button>
+      </div>
     </div>
 
     <div class="card" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:22px;padding:14px 20px">
-      <label style="font-size:13px;color:var(--text2);font-weight:500;white-space:nowrap;display:flex;align-items:center;gap:8px">Status<select onchange="changeSessStatusFromReport(this.value)" style="font-size:13px;padding:7px 12px;border-radius:var(--r);width:auto">
-        <option value="planned"${s.status==='planned'?' selected':''}>Geplant</option>
-        <option value="active"${s.status==='active'?' selected':''}>Aktiv</option>
-        <option value="done"${s.status==='done'?' selected':''}>Abgeschlossen</option>
-      </select></label>
       <div style="flex:1"></div>
-      <button onclick="exportSessXLSX()" style="padding:8px 10px;display:inline-flex;align-items:center" title="Excel exportieren"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg></button>
-      <button onclick="exportPDF()" style="padding:8px 10px;display:inline-flex;align-items:center" title="PDF exportieren"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h1a2 2 0 0 1 0 4H9v-4"/><line x1="15" y1="13" x2="15" y2="17"/><line x1="13" y1="15" x2="17" y2="15"/></svg></button>
+      <button onclick="exportSessXLSX()" style="display:inline-flex;align-items:center;gap:7px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg> Excel</button>
+      <button onclick="exportPDF()" style="display:inline-flex;align-items:center;gap:7px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h1a2 2 0 0 1 0 4H9v-4"/><line x1="15" y1="13" x2="15" y2="17"/><line x1="13" y1="15" x2="17" y2="15"/></svg> PDF</button>
     </div>
     <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:22px">
       ${stats.map(st=>`<div class="stat-card" style="background:${st.bg}"><div class="stat-val" style="color:${st.fg}">${st.val}</div><div style="font-size:12px;font-weight:500;color:${st.fg};opacity:.8">${st.lbl}</div></div>`).join('')}
@@ -821,16 +836,6 @@ function renderSessReport(){
 
     ${chapterCards}
 
-    <div class="card" style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:8px;padding:14px 20px">
-      <label style="font-size:13px;color:var(--text2);font-weight:500;white-space:nowrap;display:flex;align-items:center;gap:8px">Status<select onchange="changeSessStatusFromReport(this.value)" style="font-size:13px;padding:7px 12px;border-radius:var(--r);width:auto">
-        <option value="planned"${s.status==='planned'?' selected':''}>Geplant</option>
-        <option value="active"${s.status==='active'?' selected':''}>Aktiv</option>
-        <option value="done"${s.status==='done'?' selected':''}>Abgeschlossen</option>
-      </select></label>
-      <div style="flex:1"></div>
-      <button onclick="exportSessXLSX()" style="padding:8px 10px;display:inline-flex;align-items:center" title="Excel exportieren"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg></button>
-      <button onclick="exportPDF()" style="padding:8px 10px;display:inline-flex;align-items:center" title="PDF exportieren"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h1a2 2 0 0 1 0 4H9v-4"/><line x1="15" y1="13" x2="15" y2="17"/><line x1="13" y1="15" x2="17" y2="15"/></svg></button>
-    </div>
   </div>`;
 }
 function exportSessXLSX(){
