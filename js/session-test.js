@@ -18,8 +18,8 @@ function renderEntryRows(entries){
     const noSev=noSevForSlot(e.stepId);
     const noType=noTypeForSlot(e.stepId);
     if(e.id===editingEntryId){
-      const typeBtns=TYPES.map(t=>`<button class="type-btn edit-type-btn${t===editEntry.type?' sel':''}" data-type="${t}" style="background:${T.bg[t]};color:${T.fg[t]}" onclick="setEditType('${t}')">${typeIcon(t,14)}${t}</button>`).join('');
-      const sevBtns=[1,2,3,4,5].map(n=>`<button type="button" class="audit-sev-btn edit-sev-btn" data-sev="${n}" style="padding:7px 16px;border:2px solid ${n===editEntry.sev?SEV.fg[n]:'transparent'};background:${SEV.bg[n]};color:${SEV.fg[n]};font-size:13px;opacity:${n===editEntry.sev?1:.4};white-space:nowrap" onclick="setEditSev(${n})">${SEV.label[n]}</button>`).join('');
+      const typeBtns=TYPES.map(t=>typeButton(t,t===editEntry.type,`setEditType('${t}')`,'edit-type-btn')).join('');
+      const sevBtns=[1,2,3,4,5].map(n=>severityButton(n,n===editEntry.sev,`setEditSev(${n})`,'edit-sev-btn')).join('');
       return`<div class="entry-row" style="padding:12px 0;flex-direction:column;gap:10px;border-bottom:1px solid var(--border);background:#fafaf8">
         ${noType?'':`<div style="display:flex;gap:7px;flex-wrap:wrap">${typeBtns}</div>`}
         ${noSev?'':`<div id="edit-sev-row" style="${editEntry.type!=='Problem'?'display:none':''}">
@@ -34,9 +34,9 @@ function renderEntryRows(entries){
       </div>`;
     }
     return`<div class="entry-row" style="padding:9px 0">
-      ${e.type?`<span class="entry-icon entry-icon-only" style="background:${T.bg[e.type]};color:${T.fg[e.type]};font-size:11px" title="${e.type}" aria-label="${e.type}">${typeIcon(e.type,13)}</span>`:``}
+      ${e.type?typeBadge(e.type,{label:false,iconSize:13,cls:'entry-icon entry-icon-only'}):``}
       <div style="flex:1;min-width:0">
-        ${(!noSev&&e.severity)?`<div style="margin-bottom:3px"><span class="sev-pill sev-pill-audit" style="background:${SEV.bg[e.severity]};color:${SEV.fg[e.severity]}">${SEV.label[e.severity]}</span></div>`:''}
+        ${(!noSev&&e.severity)?`<div style="margin-bottom:3px">${severityBadge(e.severity)}</div>`:''}
         <div style="font-size:14px;line-height:1.5">${esc(e.text)}</div>
         <div style="font-size:11px;color:var(--text3);margin-top:3px;font-family:'IBM Plex Mono',monospace">${fmtTime(e.timestamp)}</div>
       </div>
@@ -61,7 +61,6 @@ function sessTestBack(battId){
 function renderSessTest(){
   const s=activeSess(); if(!s){renderBatteries();return}
   const b=batteries.find(x=>x.id===s.batteryId);
-  const st=s.status==='done'?{label:'Abgeschlossen',cls:'badge-done'}:{label:'Aktiv',cls:'badge-active'};
   setNav([{label:'Usability Testing',action:'renderDashboard()'},{label:'Usability-Tests',action:'renderBatteries()'},{label:b?.name||'Studie',action:`goBattDetail('${s.batteryId}')`},{label:s.personName||'Session',action:''}]);
   show('session-test');
   const steps=b?.steps||[];
@@ -81,8 +80,8 @@ function renderSessTest(){
       const globalIdx=stepCounter++;
       const slotEntries=allEntries.filter(e=>e.stepId===slot.id);
       const si=getSI(slot.id);
-      const typeBtns=TYPES.map(t=>`<button class="type-btn${t===si.type?' sel':''}" data-type="${t}" style="background:${T.bg[t]};color:${T.fg[t]}" onclick="setSIType('${slot.id}','${t}')">${typeIcon(t,14)}${t}</button>`).join('');
-      const sevBtns=[1,2,3,4,5].map(n=>`<button type="button" class="audit-sev-btn" data-sev="${n}" style="padding:7px 16px;border:2px solid ${n===si.sev?SEV.fg[n]:'transparent'};background:${SEV.bg[n]};color:${SEV.fg[n]};font-size:13px;opacity:${n===si.sev?1:.4};white-space:nowrap" onclick="setSISev('${slot.id}',${n})">${SEV.label[n]}</button>`).join('');
+      const typeBtns=TYPES.map(t=>typeButton(t,t===si.type,`setSIType('${slot.id}','${t}')`)).join('');
+      const sevBtns=[1,2,3,4,5].map(n=>severityButton(n,n===si.sev,`setSISev('${slot.id}',${n})`)).join('');
       const entryRows=renderEntryRows(slotEntries);
       const countBadge=slotEntries.length>0?`<span style="color:var(--text2);font-size:12px;font-weight:500;white-space:nowrap">${slotEntries.length} Eintr${slotEntries.length===1?'ag':'äge'}</span>`:'';
       slotCards+=`<div class="card" style="padding:0;overflow:hidden;margin-bottom:20px">
@@ -114,8 +113,8 @@ function renderSessTest(){
   });
   const genEntries=allEntries.filter(e=>!e.stepId);
   const siGen=getSI('general');
-  const genTypeBtns=TYPES.map(t=>`<button class="type-btn${t===siGen.type?' sel':''}" data-type="${t}" style="background:${T.bg[t]};color:${T.fg[t]}" onclick="setSIType('general','${t}')">${typeIcon(t,14)}${t}</button>`).join('');
-  const genSevBtns=[1,2,3,4,5].map(n=>`<button type="button" class="audit-sev-btn" data-sev="${n}" style="padding:7px 16px;border:2px solid ${n===siGen.sev?SEV.fg[n]:'transparent'};background:${SEV.bg[n]};color:${SEV.fg[n]};font-size:13px;opacity:${n===siGen.sev?1:.4};white-space:nowrap" onclick="setSISev('general',${n})">${SEV.label[n]}</button>`).join('');
+  const genTypeBtns=TYPES.map(t=>typeButton(t,t===siGen.type,`setSIType('general','${t}')`)).join('');
+  const genSevBtns=[1,2,3,4,5].map(n=>severityButton(n,n===siGen.sev,`setSISev('general',${n})`)).join('');
   const genEntryRows=renderEntryRows(genEntries);
   slotCards+=`<h3 style="margin:28px 0 10px">Allgemeine Beobachtungen</h3>
   <div class="card" style="padding:0;overflow:hidden;margin-bottom:20px">
@@ -143,14 +142,14 @@ function renderSessTest(){
           <div style="font-size:12px;color:var(--text3);margin-bottom:4px">${esc(b?.name||'')}</div>
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:5px;flex-wrap:wrap">
             <h2 style="margin-bottom:0">${esc(s.personName)||'Session'}${s.personCode?' <span style="font-size:14px;font-weight:400;color:var(--text2)">('+esc(s.personCode)+')</span>':''}</h2>
-            <span class="badge ${st.cls}">${st.label}</span>
+            ${statusBadge(s.status)}
           </div>
-          <div style="display:flex;flex-wrap:wrap;gap:5px 14px;font-size:13px;color:var(--text2);margin-top:6px;align-items:center">
-            ${s.personNotes?`<span><span style="font-weight:600;color:var(--text)">Notizen:</span> ${esc(s.personNotes)}</span>`:''}
-            ${s.date?`<span><span style="font-weight:600;color:var(--text)">Datum:</span> ${fmtDate(s.date)}</span>`:''}
-            ${s.tester?`<span><span style="font-weight:600;color:var(--text)">Protokollant:</span> ${esc(s.tester)}</span>`:''}
-            <span><span style="font-weight:600;color:var(--text)">Einträge:</span> ${allEntries.length}</span>
-          </div>
+          ${metaRow([
+            metaItem('Notizen',s.personNotes),
+            metaItem('Datum',s.date?fmtDate(s.date):''),
+            metaItem('Protokollant',s.tester),
+            metaItem('Einträge',allEntries.length)
+          ],'margin-top:6px')}
         </div>
         <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap;align-self:flex-start">
           <button onclick="goSessReport('${s.id}')">Bericht anzeigen</button>

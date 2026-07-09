@@ -66,7 +66,7 @@ function renderAuditEdit(){
       ${setCheckboxes}
     </div>
     <div style="display:flex;gap:10px;justify-content:space-between;margin-top:8px">
-      ${!isNew?`<button class="btn-danger" onclick="deleteAuditConfirm('${a.id}')" style="display:inline-flex;align-items:center;gap:7px">${trashIcon()}Gesamten Audit löschen</button>`:`<div></div>`}
+      ${!isNew?inlineIconButton('Gesamten Audit löschen',trashIcon(),`deleteAuditConfirm('${a.id}')`,{cls:'btn-danger'}):`<div></div>`}
       <div style="display:flex;gap:10px">
         <button onclick="${isNew?'renderAuditList()':` goAuditDetail('${a.id}')`}">Abbrechen</button>
         <button class="btn-primary" style="background:${AUDIT_COLOR};border-color:${AUDIT_COLOR}" onclick="saveAuditEdit('${isNew?'':a.id}')">Speichern</button>

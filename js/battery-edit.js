@@ -1,7 +1,6 @@
 function goBattEdit(id){activeBattId=id;renderBattEdit()}
 function renderBattEdit(){
   const b=activeBatt();if(!b){renderBatteries();return}
-  const battStatus=b.status==='done'?{label:'Abgeschlossen',cls:'badge-done'}:{label:'Aktiv',cls:'badge-active'};
   setNav([{label:'Usability Testing',action:'renderDashboard()'},{label:'Usability-Tests',action:'renderBatteries()'},{label:b.name||'Neue Studie',action:`goBattDetail('${b.id}')`},{label:'Bearbeiten',action:''}]);
   show('battery-edit');
   _editSnapshot=JSON.stringify(b);
@@ -32,7 +31,7 @@ function renderBattEdit(){
   document.getElementById('v-battery-edit').innerHTML=`<div class="page-narrow">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
       <h2 style="margin-bottom:0">${esc(b.name)||'Neue Studie'}</h2>
-      <span class="badge ${battStatus.cls}">${battStatus.label}</span>
+      ${statusBadge(b.status)}
     </div>
 
     <div class="card">
@@ -59,7 +58,7 @@ function renderBattEdit(){
     ${chapterCards}
 
     <div style="display:flex;gap:10px;justify-content:space-between;margin-top:8px">
-      <button class="btn-danger" onclick="delBatt('${b.id}')" style="display:inline-flex;align-items:center;gap:7px">${trashIcon()}Studie löschen</button>
+      ${inlineIconButton('Studie löschen',trashIcon(),`delBatt('${b.id}')`,{cls:'btn-danger'})}
       <div style="display:flex;gap:10px">
         <button onclick="battEditBack('${b.id}')">Abbrechen</button>
         <button class="btn-primary" onclick="saveBattEdit().then(()=>{_editDirty=false;goBattDetail('${b.id}')})">Speichern</button>
@@ -110,10 +109,7 @@ function setBattStatus(val){
   _editDirty=true;
   batteries=batteries.map(x=>x.id===b.id?b:x);
   const badge=document.querySelector('#v-battery-edit .badge');
-  if(badge){
-    badge.className='badge '+(val==='done'?'badge-done':'badge-active');
-    badge.textContent=val==='done'?'Abgeschlossen':'Aktiv';
-  }
+  if(badge) badge.outerHTML=statusBadge(val);
 }
 function removeStep(stepId){
   const b=activeBatt();if(!b)return;

@@ -1,7 +1,7 @@
 var db = null;
 var currentUser = null;
 let batteries = [], sessions = [];
-let auditList = [], auditFindings = [];
+let auditList = [], auditFindings = [], auditFindingImages = [];
 let _editSnapshot = null, _editDirty = false;
 let activeBattId = null, activeSessId = null;
 let activeAuditId = null, activeAuditFindingId = null;
@@ -9,13 +9,14 @@ const genId = () => Date.now().toString(36)+Math.random().toString(36).slice(2,6
 const ts = () => new Date().toISOString();
 const fmtTime = iso => iso?new Date(iso).toLocaleTimeString('de-DE',{hour:'2-digit',minute:'2-digit'}):'';
 const fmtDate = d => d?new Date(d+'T12:00:00').toLocaleDateString('de-DE'):'–';
-function esc(s){if(!s)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
+function esc(s){if(s===undefined||s===null)return'';return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;')}
 function activeBatt(){return batteries.find(b=>b.id===activeBattId)||null}
 function activeSess(){return sessions.find(s=>s.id===activeSessId)||null}
 function battSessions(battId){return sessions.filter(s=>s.batteryId===battId)}
 function activeAudit(){return auditList.find(a=>a.id===activeAuditId)||null}
 function activeFinding(){return auditFindings.find(f=>f.id===activeAuditFindingId)||null}
 function findingsForAudit(id){return auditFindings.filter(f=>f.auditId===id)}
+function imagesForFinding(id){return auditFindingImages.filter(img=>img.findingId===id).sort((a,b)=>(a.sortOrder||0)-(b.sortOrder||0)||new Date(a.createdAt)-new Date(b.createdAt))}
 function reportSaveError(err){
   console.error('Speichern fehlgeschlagen:',err);
   alert('Speichern fehlgeschlagen.\n\n'+(err?.message||err));

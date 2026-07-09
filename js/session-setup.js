@@ -4,13 +4,12 @@ function renderSessSetup(){
   _editSnapshot=JSON.stringify(s);
   _editDirty=false;
   const b=batteries.find(x=>x.id===s.batteryId);
-  const st=s.status==='done'?{label:'Abgeschlossen',cls:'badge-done'}:{label:'Aktiv',cls:'badge-active'};
   setNav([{label:'Usability Testing',action:'renderDashboard()'},{label:'Usability-Tests',action:'renderBatteries()'},{label:b?.name||'Studie',action:`goBattDetail('${s.batteryId}')`},{label:s.personName||'Neue Session',action:''}]);
   show('session-setup');
   document.getElementById('v-session-setup').innerHTML=`<div class="page-narrow">
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;flex-wrap:wrap">
       <h2 style="margin-bottom:0">${esc(s.personName)||'Neue Testsession'}</h2>
-      <span class="badge ${st.cls}">${st.label}</span>
+      ${statusBadge(s.status)}
     </div>
 
     <div class="card">
@@ -42,7 +41,7 @@ function renderSessSetup(){
     </div>
 
     <div style="display:flex;gap:10px;justify-content:space-between;margin-top:8px">
-      <button class="btn-danger" onclick="delSess('${s.id}')" style="display:inline-flex;align-items:center;gap:7px">${trashIcon()}Session löschen</button>
+      ${inlineIconButton('Session löschen',trashIcon(),`delSess('${s.id}')`,{cls:'btn-danger'})}
       <div style="display:flex;gap:10px">
         <button onclick="sessSetupAbbrechen('${s.batteryId}')">Abbrechen</button>
         <button class="btn-primary" onclick="saveSessSetup().then(()=>{_editDirty=false;goBattDetail('${s.batteryId}')})">Speichern</button>
@@ -90,10 +89,7 @@ function setSessStatus(val){
   _editDirty=true;
   sessions=sessions.map(x=>x.id===s.id?s:x);
   const badge=document.querySelector('#v-session-setup .badge');
-  if(badge){
-    badge.className='badge '+(val==='done'?'badge-done':'badge-active');
-    badge.textContent=val==='done'?'Abgeschlossen':'Aktiv';
-  }
+  if(badge) badge.outerHTML=statusBadge(val);
 }
 function startSession(){
   const s=activeSess();if(!s)return;

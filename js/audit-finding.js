@@ -1,7 +1,235 @@
-let _findingSev=3;
+let _findingSev=null;
 let _findingCriteria=[];
 let _findingMode='view'; // 'view' | 'edit' — read by router for hash
 let _findingEditSnapshot=null;
+let _auditLightboxImageId=null;
+const AUDIT_IMAGE_BUCKET='audit-finding-images';
+const AUDIT_IMAGE_MAX_BYTES=5*1024*1024;
+const AUDIT_IMAGE_MAX_EDGE=1600;
+const AUDIT_IMAGE_QUALITY=0.82;
+
+function auditImageSizeLabel(bytes){
+  if(!bytes)return '';
+  if(bytes<1024*1024)return `${Math.round(bytes/1024)} KB`;
+  return `${(bytes/1024/1024).toFixed(1).replace('.',',')} MB`;
+}
+
+function renderAuditImageGallery(findingId,{editable=false}={}){
+  const imgs=imagesForFinding(findingId);
+  if(!editable&&!imgs.length)return '';
+  const empty=editable?`<div class="audit-img-empty">Noch keine Bilder hinzugefügt.</div>`:'';
+  const items=imgs.map(img=>`<div class="audit-img-card">
+    <button type="button" class="audit-img-frame" onclick="openAuditImageLightbox('${img.id}')">
+      <img class="audit-img-thumb" data-img-id="${esc(img.id)}" data-path="${esc(img.storagePath)}" alt="${esc(img.fileName)||'Finding-Bild'}">
+    </button>
+    <div class="audit-img-meta">
+      <span>${esc(img.fileName)||'Bild'}</span>
+      ${img.sizeBytes?`<span>${auditImageSizeLabel(img.sizeBytes)}</span>`:''}
+    </div>
+    ${editable?`<button class="btn-ghost btn-sm audit-img-delete" onclick="deleteAuditImage('${img.id}')" title="Bild löschen">${trashIcon(14)}Löschen</button>`:''}
+  </div>`).join('');
+  return `<div id="af-image-gallery" class="audit-img-grid">${items||empty}</div>`;
+}
+
+async function hydrateAuditImageThumbs(){
+  const thumbs=[...document.querySelectorAll('.audit-img-thumb[data-path]')];
+  await Promise.all(thumbs.map(async img=>{
+    const path=img.dataset.path;
+    if(!path||img.dataset.loaded)return;
+    const {data,error}=await db.storage.from(AUDIT_IMAGE_BUCKET).createSignedUrl(path,60*60);
+    if(error){
+      img.closest('.audit-img-card')?.classList.add('audit-img-error');
+      return;
+    }
+    img.src=data.signedUrl;
+    img.dataset.loaded='1';
+  }));
+}
+
+function ensureAuditImageLightbox(){
+  let lb=document.getElementById('audit-image-lightbox');
+  if(lb)return lb;
+  lb=document.createElement('div');
+  lb.id='audit-image-lightbox';
+  lb.className='audit-lightbox hidden';
+  lb.innerHTML=`<button type="button" class="audit-lightbox-backdrop" onclick="closeAuditImageLightbox()" aria-label="Bild schließen"></button>
+    <div class="audit-lightbox-panel">
+      <button type="button" class="audit-lightbox-close" onclick="closeAuditImageLightbox()" aria-label="Schließen">×</button>
+      <button type="button" class="audit-lightbox-nav audit-lightbox-prev" onclick="showAdjacentAuditImage(-1)" aria-label="Vorheriges Bild">‹</button>
+      <img id="audit-lightbox-img" class="audit-lightbox-img" alt="">
+      <button type="button" class="audit-lightbox-nav audit-lightbox-next" onclick="showAdjacentAuditImage(1)" aria-label="Nächstes Bild">›</button>
+      <div id="audit-lightbox-caption" class="audit-lightbox-caption"></div>
+    </div>`;
+  document.body.appendChild(lb);
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape')closeAuditImageLightbox();
+    if(event.key==='ArrowLeft')showAdjacentAuditImage(-1);
+    if(event.key==='ArrowRight')showAdjacentAuditImage(1);
+  });
+  return lb;
+}
+
+async function openAuditImageLightbox(id){
+  const img=auditFindingImages.find(x=>x.id===id);
+  if(!img)return;
+  _auditLightboxImageId=id;
+  const lb=ensureAuditImageLightbox();
+  const imageEl=document.getElementById('audit-lightbox-img');
+  const cap=document.getElementById('audit-lightbox-caption');
+  imageEl.removeAttribute('src');
+  imageEl.alt=img.fileName||'Finding-Bild';
+  cap.textContent=img.caption||img.fileName||'';
+  lb.classList.remove('hidden');
+  const thumb=[...document.querySelectorAll('.audit-img-thumb[data-img-id]')].find(el=>el.dataset.imgId===id);
+  if(thumb?.src){
+    imageEl.src=thumb.src;
+    return;
+  }
+  const {data,error}=await db.storage.from(AUDIT_IMAGE_BUCKET).createSignedUrl(img.storagePath,60*60);
+  if(error){
+    cap.textContent='Bild konnte nicht geladen werden.';
+    return;
+  }
+  imageEl.src=data.signedUrl;
+}
+
+function showAdjacentAuditImage(dir){
+  const lb=document.getElementById('audit-image-lightbox');
+  if(!lb||lb.classList.contains('hidden')||!_auditLightboxImageId)return;
+  const current=auditFindingImages.find(x=>x.id===_auditLightboxImageId);
+  if(!current)return;
+  const imgs=imagesForFinding(current.findingId);
+  if(imgs.length<2)return;
+  const idx=imgs.findIndex(x=>x.id===_auditLightboxImageId);
+  const next=imgs[(idx+dir+imgs.length)%imgs.length];
+  if(next)openAuditImageLightbox(next.id);
+}
+
+function closeAuditImageLightbox(){
+  const lb=document.getElementById('audit-image-lightbox');
+  if(!lb)return;
+  lb.classList.add('hidden');
+  _auditLightboxImageId=null;
+  document.getElementById('audit-lightbox-img')?.removeAttribute('src');
+}
+
+function refreshAuditImageGallery(findingId){
+  const wrap=document.getElementById('af-image-gallery');
+  if(!wrap)return;
+  const html=renderAuditImageGallery(findingId,{editable:true});
+  const tmp=document.createElement('div');
+  tmp.innerHTML=html;
+  wrap.replaceWith(tmp.firstElementChild);
+  hydrateAuditImageThumbs();
+}
+
+function loadImageForCompression(file){
+  return new Promise((resolve,reject)=>{
+    const url=URL.createObjectURL(file);
+    const img=new Image();
+    img.onload=()=>{URL.revokeObjectURL(url);resolve(img);};
+    img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error('Bild konnte nicht gelesen werden.'));};
+    img.src=url;
+  });
+}
+
+function canvasToBlob(canvas,type,quality){
+  return new Promise(resolve=>canvas.toBlob(resolve,type,quality));
+}
+
+async function compressAuditImage(file){
+  if(!file.type.startsWith('image/'))throw new Error(`${file.name}: keine Bilddatei.`);
+  if(!['image/png','image/jpeg','image/webp'].includes(file.type))throw new Error(`${file.name}: nur PNG, JPEG oder WebP sind erlaubt.`);
+  const img=await loadImageForCompression(file);
+  const scale=Math.min(1,AUDIT_IMAGE_MAX_EDGE/Math.max(img.naturalWidth,img.naturalHeight));
+  const w=Math.max(1,Math.round(img.naturalWidth*scale));
+  const h=Math.max(1,Math.round(img.naturalHeight*scale));
+  const canvas=document.createElement('canvas');
+  canvas.width=w;canvas.height=h;
+  const ctx=canvas.getContext('2d');
+  ctx.drawImage(img,0,0,w,h);
+  let blob=await canvasToBlob(canvas,'image/webp',AUDIT_IMAGE_QUALITY);
+  let mime='image/webp',ext='webp';
+  if(!blob){
+    blob=await canvasToBlob(canvas,'image/jpeg',AUDIT_IMAGE_QUALITY);
+    mime='image/jpeg';ext='jpg';
+  }
+  if(!blob)throw new Error(`${file.name}: Bild konnte nicht komprimiert werden.`);
+  if(blob.size>AUDIT_IMAGE_MAX_BYTES)throw new Error(`${file.name}: Bild ist nach Komprimierung größer als 5 MB.`);
+  return {blob,mime,ext,width:w,height:h};
+}
+
+async function uploadAuditFindingImages(findingId,auditId,fileList){
+  const files=[...fileList];
+  const input=document.getElementById('af-image-input');
+  const status=document.getElementById('af-image-upload-status');
+  if(input)input.value='';
+  if(!files.length)return;
+  if(!currentUser?.id){alert('Bitte neu anmelden, damit Bilder hochgeladen werden können.');return;}
+  const existing=imagesForFinding(findingId);
+  if(existing.length+files.length>5){alert('Bitte maximal 5 Bilder pro Finding hinzufügen.');return;}
+  if(status)status.textContent='Bilder werden vorbereitet…';
+  try{
+    for(const file of files){
+      const imgId=genId();
+      const converted=await compressAuditImage(file);
+      const path=`${currentUser.id}/${auditId}/${findingId}/${imgId}.${converted.ext}`;
+      const {error:uploadError}=await db.storage.from(AUDIT_IMAGE_BUCKET).upload(path,converted.blob,{contentType:converted.mime});
+      throwDbError('Bild hochladen',uploadError);
+      const img={
+        id:imgId,auditId,findingId,storagePath:path,
+        fileName:file.name,mimeType:converted.mime,sizeBytes:converted.blob.size,
+        caption:'',sortOrder:imagesForFinding(findingId).length,createdAt:ts()
+      };
+      try{
+        await saveAuditFindingImageToDb(img);
+      } catch(err){
+        await db.storage.from(AUDIT_IMAGE_BUCKET).remove([path]);
+        throw err;
+      }
+      auditFindingImages=[...auditFindingImages,img];
+    }
+    refreshAuditImageGallery(findingId);
+    if(status)status.textContent='Upload abgeschlossen.';
+  } catch(err){
+    console.error(err);
+    if(status)status.textContent='';
+    alert('Bild-Upload fehlgeschlagen.\n\n'+(err?.message||err));
+  }
+}
+
+function setAuditImageDropActive(on){
+  const dz=document.getElementById('af-image-dropzone');
+  if(dz)dz.classList.toggle('is-dragover',!!on);
+}
+
+function handleAuditImageDrag(event,on){
+  event.preventDefault();
+  event.stopPropagation();
+  setAuditImageDropActive(on);
+}
+
+function handleAuditImageDrop(event,findingId,auditId){
+  event.preventDefault();
+  event.stopPropagation();
+  setAuditImageDropActive(false);
+  const files=event.dataTransfer?.files;
+  if(files?.length)uploadAuditFindingImages(findingId,auditId,files);
+}
+
+function deleteAuditImage(id){
+  const img=auditFindingImages.find(x=>x.id===id);
+  if(!img)return;
+  ask('Bild wirklich löschen?',async()=>{
+    try{
+      await deleteAuditFindingImageFromDb(img);
+      auditFindingImages=auditFindingImages.filter(x=>x.id!==id);
+      refreshAuditImageGallery(img.findingId);
+    } catch(err){
+      reportSaveError(err);
+    }
+  });
+}
 
 function getFindingEditDraft(){
   if(_findingMode!=='edit')return null;
@@ -81,11 +309,12 @@ function renderAuditFindingView(){
   const nextBtn=next
     ?`<button onclick="goAuditFinding('${next.id}')" style="display:flex;align-items:center;gap:6px">Nächstes →</button>`
     :`<button disabled style="opacity:.3;cursor:default">Nächstes →</button>`;
+  const imageGallery=renderAuditImageGallery(f.id);
 
   el.innerHTML=`<div class="page" style="max-width:1040px">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;gap:10px">
       <button onclick="goAuditDetail('${a.id}')">← Zur Liste</button>
-      <button onclick="renderAuditFinding()" style="display:inline-flex;align-items:center;gap:7px">${editIcon()}Bearbeiten</button>
+      ${inlineIconButton('Bearbeiten',editIcon(),'renderAuditFinding()')}
     </div>
     <div style="display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:32px;align-items:start">
       <div>
@@ -103,13 +332,17 @@ function renderAuditFindingView(){
             <div style="font-size:14px;line-height:1.6;white-space:pre-wrap">${esc(f.recommendation)}</div>
           </div>`:''}
         </div>
+        ${imageGallery?`<div class="card">
+          <h3>Bilder</h3>
+          ${imageGallery}
+        </div>`:''}
       </div>
       <div>
         <div class="card">
           <h3>Einordnung</h3>
           <div style="margin-bottom:20px">
             <div class="lbl" style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:6px;letter-spacing:.03em">Schweregrad</div>
-            <span style="background:${SEV.bg[f.severity]};color:${SEV.fg[f.severity]};font-size:13px;font-weight:700;line-height:1.2;padding:7px 14px;border-radius:var(--r);white-space:nowrap;display:inline-flex;align-items:center;vertical-align:middle">${SEV.label[f.severity]}</span>
+            ${severityBadge(f.severity)}
           </div>
           ${criteriaDisplay?`<div class="lbl" style="display:block;font-size:12px;font-weight:600;color:var(--text2);margin-bottom:8px;letter-spacing:.03em">Kriterium</div>${criteriaDisplay}`:''}
         </div>
@@ -118,13 +351,14 @@ function renderAuditFindingView(){
 
     <div style="display:flex;justify-content:space-between;margin-top:24px">${prevBtn}${nextBtn}</div>
   </div>`;
+  hydrateAuditImageThumbs();
 }
 
 function renderAuditFinding(){
   const a=activeAudit();if(!a){renderAuditList();return;}
-  const f=activeFinding()||{id:null,auditId:a.id,criterion:'',title:'',description:'',severity:3,recommendation:'',createdAt:null};
+  const f=activeFinding()||{id:null,auditId:a.id,criterion:'',title:'',description:'',severity:null,recommendation:'',createdAt:null};
   const isNew=!f.id;
-  _findingSev=f.severity||3;
+  _findingSev=f.severity??null;
   _findingCriteria=parseCriteria(f.criterion);
   setNav([
     {label:'UX Audit',action:'renderDashboard()'},
@@ -158,13 +392,31 @@ function renderAuditFinding(){
     criterionField=`<input type="text" id="af-criterion-text" value="${esc(f.criterion)}" placeholder="Kein Kriteriensatz konfiguriert – Freitext">`;
   }
 
-  const sevBtns=[1,2,3,4,5].map(n=>`<button type="button" id="sev-af-${n}" class="audit-sev-btn"
-    style="padding:7px 16px;border:2px solid ${n===_findingSev?SEV.fg[n]:'transparent'};background:${SEV.bg[n]};color:${SEV.fg[n]};font-size:13px;opacity:${n===_findingSev?1:.4};white-space:nowrap"
-    onclick="setAfSev(${n})">${SEV.label[n]}</button>`).join('');
+  const sevBtns=[1,2,3,4,5].map(n=>severityButton(n,n===_findingSev,`setAfSev(${n})`)).join('');
 
   const rightCol=hasSets
     ?criterionField
     :`<div class="field"><label class="lbl">Kriterium</label>${criterionField}</div>`;
+  const imageControls=isNew
+    ?`<div class="audit-img-empty">Bilder können nach dem ersten Speichern hinzugefügt werden.</div>`
+    :`<div class="field" style="margin-bottom:12px">
+        <label class="lbl">Bilder hinzufügen</label>
+        <input type="file" id="af-image-input" class="audit-img-input" accept="image/png,image/jpeg,image/webp" multiple onchange="uploadAuditFindingImages('${f.id}','${a.id}',this.files)">
+        <button type="button" id="af-image-dropzone" class="audit-img-dropzone"
+          onclick="document.getElementById('af-image-input')?.click()"
+          ondragover="handleAuditImageDrag(event,true)"
+          ondragenter="handleAuditImageDrag(event,true)"
+          ondragleave="handleAuditImageDrag(event,false)"
+          ondrop="handleAuditImageDrop(event,'${f.id}','${a.id}')">
+          <span class="audit-img-drop-title">Bilder hier ablegen</span>
+          <span class="audit-img-drop-sub">oder klicken zum Auswählen · PNG, JPEG, WebP · max. 5 Bilder</span>
+        </button>
+        <div id="af-image-upload-status" style="font-size:12px;color:var(--text3);margin-top:6px"></div>
+      </div>
+      ${renderAuditImageGallery(f.id,{editable:true})}`;
+  const cancelAction=isNew
+    ?`confirmLeaveIfDirty(()=>goAuditDetail('${a.id}'))`
+    :`confirmLeaveIfDirty(()=>renderAuditFindingView())`;
 
   el.innerHTML=`<div class="page" style="max-width:1040px">
     <h2 style="margin-bottom:24px">${isNew?'Neues Finding':'Finding bearbeiten'}</h2>
@@ -183,10 +435,14 @@ function renderAuditFinding(){
           <div class="field" style="margin-bottom:0"><label class="lbl">Empfehlung</label>
             <textarea id="af-recommendation" rows="8" placeholder="Welche Maßnahme wird empfohlen?">${esc(f.recommendation)}</textarea></div>
         </div>
+        <div class="card">
+          <h3>Bilder</h3>
+          ${imageControls}
+        </div>
         <div style="display:flex;gap:10px;justify-content:space-between;margin-top:8px">
-          ${!isNew?`<button class="btn-danger" onclick="deleteAuditFindingConfirm('${f.id}','${a.id}')" style="display:inline-flex;align-items:center;gap:7px">${trashIcon()}Finding löschen</button>`:`<div></div>`}
+          ${!isNew?inlineIconButton('Finding löschen',trashIcon(),`deleteAuditFindingConfirm('${f.id}','${a.id}')`,{cls:'btn-danger'}):`<div></div>`}
           <div style="display:flex;gap:10px">
-            <button onclick="confirmLeaveIfDirty(()=>goAuditDetail('${a.id}'))">Abbrechen</button>
+            <button onclick="${cancelAction}">Abbrechen</button>
             <button class="btn-primary" style="background:${AUDIT_COLOR};border-color:${AUDIT_COLOR}" onclick="saveAuditFinding('${isNew?'':f.id}','${a.id}')">Speichern</button>
           </div>
         </div>
@@ -200,6 +456,7 @@ function renderAuditFinding(){
     </div>
   </div>`;
   _findingEditSnapshot=JSON.stringify(getFindingEditDraft());
+  hydrateAuditImageThumbs();
 }
 
 function toggleCriterion(id){
@@ -218,8 +475,8 @@ function toggleCriterion(id){
 
 function setAfSev(n){
   _findingSev=n;
-  [1,2,3,4,5].forEach(i=>{
-    const btn=document.getElementById('sev-af-'+i);if(!btn)return;
+  document.querySelectorAll('#v-audit-finding .audit-sev-btn').forEach(btn=>{
+    const i=Number(btn.dataset.sev);
     btn.style.border=`2px solid ${i===n?SEV.fg[i]:'transparent'}`;
     btn.style.opacity=i===n?'1':'0.4';
   });
@@ -232,6 +489,7 @@ async function saveAuditFinding(existingId,auditId){
   const freeText=document.getElementById('af-criterion-text');
   const criterion=freeText?freeText.value.trim():serializeCriteria(_findingCriteria);
   if(!title){alert('Bitte einen Titel eingeben.');return;}
+  if(!_findingSev){alert('Bitte einen Schweregrad auswählen.');return;}
   const existing=existingId?activeFinding():null;
   const f={
     id:existingId||genId(), auditId,
@@ -258,8 +516,14 @@ async function saveAuditFinding(existingId,auditId){
 async function deleteAuditFindingConfirm(id,auditId){
   ask('Finding wirklich löschen?',async()=>{
     try{
+      const imgs=imagesForFinding(id);
+      if(imgs.length){
+        const {error:storageError}=await db.storage.from(AUDIT_IMAGE_BUCKET).remove(imgs.map(img=>img.storagePath));
+        throwDbError('Bilddateien loeschen',storageError);
+      }
       await deleteAuditFindingFromDb(id);
       auditFindings=auditFindings.filter(f=>f.id!==id);
+      auditFindingImages=auditFindingImages.filter(img=>img.findingId!==id);
       activeAuditFindingId=null;
       goAuditDetail(auditId);
     } catch(err){

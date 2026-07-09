@@ -1,11 +1,9 @@
 function goBattDetail(id){activeBattId=id;renderBattDetail()}
 function renderBattDetail(){
   const b=activeBatt();if(!b){renderBatteries();return}
-  const battStatus=b.status==='done'?{label:'Abgeschlossen',cls:'badge-done'}:{label:'Aktiv',cls:'badge-active'};
   setNav([{label:'Usability Testing',action:'renderDashboard()'},{label:'Usability-Tests',action:'renderBatteries()'},{label:b.name||'Studie',action:`goBattDetail('${b.id}')`}]);
   show('battery-detail');
   const slist=battSessions(b.id);
-  const STATUS={active:{label:'Aktiv',cls:'badge-active'},done:{label:'Abgeschlossen',cls:'badge-done'}};
   const stepsList=(()=>{
     const steps=b.steps||[];
     if(steps.length===0) return`<div style="color:var(--text3);font-size:13px;padding:6px 0">Keine Schritte definiert – <button class="btn-ghost btn-sm" style="padding:0;display:inline-flex;align-items:center;gap:5px" onclick="goBattEdit('${b.id}')">${editIcon(14)}Leitfaden bearbeiten</button></div>`;
@@ -19,20 +17,19 @@ function renderBattDetail(){
     return html;
   })();
   const renderSessRow=(s,i,showReport=true)=>{
-      const st=STATUS[s.status]||STATUS.active;
       const cnt=(s.entries||[]).length;
       return`<div class="sess-row" onclick="openSession('${s.id}')">
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:9px;flex-wrap:wrap">
             <span style="font-weight:500">${esc(s.personName)||'Person '+(i+1)}</span>
-            <span class="badge ${st.cls}">${st.label}</span>
+            ${statusBadge(s.status)}
           </div>
-          <div style="font-size:12px;color:var(--text3);display:flex;gap:12px;margin-top:3px;flex-wrap:wrap">
-            ${s.personCode?`<span style="font-family:'IBM Plex Mono',monospace">${esc(s.personCode)}</span>`:''}
-            ${s.date?`<span>${fmtDate(s.date)}</span>`:''}
-            ${s.tester?`<span>Protokollant: ${esc(s.tester)}</span>`:''}
-            <span>${cnt} Einträge</span>
-          </div>
+          ${metaRow([
+            metaItem('Code',s.personCode,{mono:true}),
+            metaItem('Datum',s.date?fmtDate(s.date):''),
+            metaItem('Protokollant',s.tester),
+            metaItem('Einträge',cnt)
+          ],'font-size:12px;color:var(--text3);margin-top:3px;gap:5px 12px')}
         </div>
         <div style="display:flex;gap:6px;align-items:center;flex-shrink:0" onclick="event.stopPropagation()">
           ${showReport?`<button class="btn-sm" onclick="goSessReport('${s.id}')" style="display:inline-flex;align-items:center;gap:6px"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>Bericht</button>`:''}
@@ -53,16 +50,16 @@ function renderBattDetail(){
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
           <h2 style="margin-bottom:0">${esc(b.name)||'(Ohne Name)'}</h2>
-          <span class="badge ${battStatus.cls}">${battStatus.label}</span>
+          ${statusBadge(b.status)}
         </div>
-        <div style="display:flex;flex-wrap:wrap;gap:5px 14px;font-size:14px;color:var(--text2);align-items:center">
-          ${b.product?`<span><span style="font-weight:600;color:var(--text)">Produkt:</span> ${esc(b.product)}</span>`:''}
-          ${b.link?`<span><span style="font-weight:600;color:var(--text)">Link:</span> <a href="${esc(b.link)}" target="_blank" style="color:var(--accent)">${esc(b.link)}</a></span>`:''}
-          ${b.description?`<span style="width:100%"><span style="font-weight:600;color:var(--text)">Ziel:</span> ${esc(b.description)}</span>`:''}
-        </div>
+        ${metaRow([
+          metaItem('Produkt',b.product),
+          metaItem('Link',b.link?`<a href="${esc(b.link)}" target="_blank" style="color:var(--accent)">${esc(b.link)}</a>`:'',{raw:true}),
+          metaItem('Ziel',b.description,{wide:true})
+        ],'font-size:14px')}
       </div>
       <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
-        <button onclick="goBattEdit('${b.id}')" style="display:inline-flex;align-items:center;gap:7px">${editIcon()}Bearbeiten</button>
+        ${inlineIconButton('Bearbeiten',editIcon(),`goBattEdit('${b.id}')`)}
       </div>
     </div>
 

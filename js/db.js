@@ -33,6 +33,8 @@ async function load(){
     if(e5)throw e5;
     const {data:findingRows,error:e6}=await db.from('audit_findings').select('*').order('created_at',{ascending:true});
     if(e6)throw e6;
+    const {data:findingImageRows,error:e7}=await db.from('audit_finding_images').select('*').order('sort_order',{ascending:true});
+    if(e7)throw e7;
 
     batteries=(studyRows||[]).map(r=>({
       id:r.id, name:r.name||'', product:r.product||'', link:r.link||'', description:r.description||'',
@@ -56,6 +58,13 @@ async function load(){
       id:r.id, auditId:r.audit_id, criterion:r.criterion||'',
       title:r.title||'', description:r.description||'',
       severity:r.severity||3, recommendation:r.recommendation||'',
+      createdAt:r.created_at
+    }));
+    auditFindingImages=(findingImageRows||[]).map(r=>({
+      id:r.id, auditId:r.audit_id, findingId:r.finding_id,
+      storagePath:r.storage_path||'', fileName:r.file_name||'',
+      mimeType:r.mime_type||'', sizeBytes:r.size_bytes||0,
+      caption:r.caption||'', sortOrder:r.sort_order||0,
       createdAt:r.created_at
     }));
   } catch(err){
@@ -124,5 +133,21 @@ async function saveAuditFindingToDb(f){
     created_at:f.createdAt||ts(), user_id:currentUser?.id
   }));
 }
+async function saveAuditFindingImageToDb(img){
+  await expectDb('Bild speichern', db.from('audit_finding_images').upsert({
+    id:img.id, audit_id:img.auditId, finding_id:img.findingId,
+    storage_path:img.storagePath, file_name:img.fileName||'',
+    mime_type:img.mimeType||'', size_bytes:img.sizeBytes||0,
+    caption:img.caption||'', sort_order:img.sortOrder||0,
+    created_at:img.createdAt||ts(), user_id:currentUser?.id
+  }));
+}
 async function deleteAuditFromDb(id){await expectDb('Audit loeschen', db.from('audits').delete().eq('id',id));}
 async function deleteAuditFindingFromDb(id){await expectDb('Finding loeschen', db.from('audit_findings').delete().eq('id',id));}
+async function deleteAuditFindingImageFromDb(img){
+  if(img?.storagePath){
+    const {error:storageError}=await db.storage.from('audit-finding-images').remove([img.storagePath]);
+    throwDbError('Bilddatei loeschen',storageError);
+  }
+  await expectDb('Bild-Metadaten loeschen', db.from('audit_finding_images').delete().eq('id',img.id));
+}

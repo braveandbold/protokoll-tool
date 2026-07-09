@@ -15,14 +15,14 @@ function renderAuditList(){
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
             <span style="font-weight:600;font-size:17px">${esc(a.name)||'(Ohne Name)'}</span>
-            ${a.status==='done'?`<span class="badge badge-done">Abgeschlossen</span>`:`<span class="badge badge-active">Aktiv</span>`}
+            ${statusBadge(a.status)}
           </div>
-          <div style="font-size:13px;color:var(--text2);display:flex;gap:16px;flex-wrap:wrap">
-            ${a.subject?`<span><span style="font-weight:600;color:var(--text)">Prüfgegenstand:</span> ${esc(a.subject)}</span>`:''}
-            <span><span style="font-weight:600;color:var(--text)">Findings:</span> ${fc}</span>
-            ${a.auditor?`<span><span style="font-weight:600;color:var(--text)">Prüfer:</span> ${esc(a.auditor)}</span>`:''}
-            ${a.date?`<span><span style="font-weight:600;color:var(--text)">Zeitraum:</span> ${fmtAuditDate(a.date)}</span>`:''}
-          </div>
+          ${metaRow([
+            metaItem('Prüfgegenstand',a.subject),
+            metaItem('Findings',fc),
+            metaItem('Prüfer',a.auditor),
+            metaItem('Zeitraum',a.date?fmtAuditDate(a.date):'')
+          ])}
         </div>
       </div>
       ${sets?`<div style="margin-top:10px;font-size:12px;color:var(--text3)">${esc(sets)}</div>`:''}

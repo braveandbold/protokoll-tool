@@ -6,20 +6,19 @@ function renderBatteries(){
     const slist=battSessions(b.id);
     const done=slist.filter(s=>s.status==='done').length;
     const active=slist.filter(s=>s.status!=='done').length;
-    const st=b.status==='done'?{label:'Abgeschlossen',cls:'badge-done'}:{label:'Aktiv',cls:'badge-active'};
     return`<div class="batt-card" onclick="goBattDetail('${b.id}')">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:12px">
         <div style="flex:1;min-width:0">
           <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;flex-wrap:wrap">
             <span style="font-weight:600;font-size:17px">${esc(b.name)||'(Ohne Name)'}</span>
-            <span class="badge ${st.cls}">${st.label}</span>
+            ${statusBadge(b.status)}
           </div>
-          <div style="font-size:13px;color:var(--text2);display:flex;gap:16px;flex-wrap:wrap">
-            ${b.product?`<span><span style="font-weight:600;color:var(--text)">Produkt/System:</span> ${esc(b.product)}</span>`:''}
-            <span><span style="font-weight:600;color:var(--text)">Sessions:</span> ${slist.length} (${done} abgeschlossen${active>0?', '+active+' aktiv':''})</span>
-            <span><span style="font-weight:600;color:var(--text)">Erstellt:</span> ${fmtDate(b.createdAt?.slice(0,10))}</span>
-          </div>
-          ${b.description?`<div style="font-size:13px;color:var(--text2);margin-top:8px;line-height:1.5"><span style="font-weight:600;color:var(--text)">Ziel:</span> ${esc(b.description)}</div>`:''}
+          ${metaRow([
+            metaItem('Produkt/System',b.product),
+            metaItem('Sessions',`${slist.length} (${done} abgeschlossen${active>0?', '+active+' aktiv':''})`),
+            metaItem('Erstellt',fmtDate(b.createdAt?.slice(0,10)))
+          ])}
+          ${b.description?metaRow([metaItem('Ziel',b.description,{wide:true})],'margin-top:8px;line-height:1.5'):''}
         </div>
       </div>
     </div>`;

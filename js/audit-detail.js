@@ -68,20 +68,25 @@ function renderAuditDetail(){
     <div onclick="setAuditSort('number')" style="width:36px;flex-shrink:0;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;cursor:pointer;user-select:none;display:flex;align-items:center">Nr.${sortIcon('number')}</div>
     <div onclick="setAuditSort('severity')" style="width:116px;flex-shrink:0;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;cursor:pointer;user-select:none;display:flex;align-items:center">Schweregrad${sortIcon('severity')}</div>
     <div style="flex:1;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em">Titel</div>
+    <div style="width:64px;flex-shrink:0;font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;text-align:right">Bilder</div>
   </div>`;
 
   const findingsHtml=findings.length===0
     ?`<div class="empty" style="padding:40px 20px">Noch keine Findings – füge das erste Finding hinzu</div>`
     :tableHeader+sorted.map(f=>{
       const num=auditFindingNumber(f,byDate);
+      const imgCount=imagesForFinding(f.id).length;
       return`<div class="sess-row" onclick="goAuditFinding('${f.id}')" style="gap:20px">
         <span style="font-size:12px;font-weight:600;color:var(--text3);flex-shrink:0;width:36px">#${num}</span>
         <div style="width:116px;flex-shrink:0;display:flex;align-items:center">
-          <span style="background:${SEV.bg[f.severity]};color:${SEV.fg[f.severity]};font-size:12px;font-weight:700;line-height:1.2;padding:5px 10px;border-radius:var(--r);white-space:nowrap;display:inline-flex;align-items:center;vertical-align:middle">${SEV.label[f.severity]}</span>
+          ${severityBadge(f.severity)}
         </div>
         <div style="flex:1;min-width:0">
           <div style="font-weight:500;font-size:14px">${esc(f.title)||'(Ohne Titel)'}</div>
           ${f.description?`<div style="font-size:13px;color:var(--text2);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(f.description)}</div>`:''}
+        </div>
+        <div style="width:64px;flex-shrink:0;display:flex;justify-content:flex-end">
+          ${imgCount?`<span class="audit-img-count" title="${imgCount} Bild${imgCount===1?'':'er'}">${imageIcon(15)}${imgCount}</span>`:''}
         </div>
       </div>`;
     }).join('');
@@ -91,24 +96,24 @@ function renderAuditDetail(){
       <div style="flex:1;min-width:0">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;flex-wrap:wrap">
           <h1 style="margin-bottom:0">${esc(a.name)||'(Ohne Name)'}</h1>
-          <span class="badge ${a.status==='done'?'badge-done':'badge-active'}">${a.status==='done'?'Abgeschlossen':'Aktiv'}</span>
+          ${statusBadge(a.status)}
         </div>
-        <div style="font-size:13px;color:var(--text2);display:flex;flex-wrap:wrap;gap:5px 14px;align-items:center">
-          ${a.subject?`<span><span style="font-weight:600;color:var(--text)">Prüfgegenstand:</span> ${esc(a.subject)}</span>`:''}
-          ${a.auditor?`<span><span style="font-weight:600;color:var(--text)">Prüfer:</span> ${esc(a.auditor)}</span>`:''}
-          ${a.date?`<span><span style="font-weight:600;color:var(--text)">Zeitraum:</span> ${fmtAuditDate(a.date)}</span>`:''}
-          ${sets?`<span><span style="font-weight:600;color:var(--text)">Kriterien:</span> ${esc(sets)}</span>`:''}
-        </div>
+        ${metaRow([
+          metaItem('Prüfgegenstand',a.subject),
+          metaItem('Prüfer',a.auditor),
+          metaItem('Zeitraum',a.date?fmtAuditDate(a.date):''),
+          metaItem('Kriterien',sets)
+        ])}
       </div>
       <div style="display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
         <button onclick="generateAuditPdf()">PDF-Bericht</button>
-        <button onclick="goAuditEditExisting('${a.id}')" style="display:inline-flex;align-items:center;gap:7px">${editIcon()}Bearbeiten</button>
+        ${inlineIconButton('Bearbeiten',editIcon(),`goAuditEditExisting('${a.id}')`)}
       </div>
     </div>
 
     ${findings.length>0?`<h3 style="margin-bottom:12px">Zusammenfassung</h3>
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(132px,1fr));gap:12px;margin-bottom:24px">
-      ${stats.map(st=>`<div class="stat-card" style="background:${st.bg}"><div class="stat-val" style="color:${st.fg}">${st.val}</div><div style="font-size:12px;font-weight:500;color:${st.fg};opacity:.8">${st.lbl}</div></div>`).join('')}
+      ${stats.map(statCard).join('')}
     </div>`:''}
 
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">

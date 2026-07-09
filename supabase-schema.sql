@@ -68,12 +68,27 @@ create table if not exists public.audit_findings (
   created_at timestamptz not null default now()
 );
 
+create table if not exists public.audit_finding_images (
+  id text primary key,
+  user_id uuid not null references auth.users(id) on delete cascade,
+  audit_id text not null references public.audits(id) on delete cascade,
+  finding_id text not null references public.audit_findings(id) on delete cascade,
+  storage_path text not null,
+  file_name text not null default '',
+  mime_type text not null default '',
+  size_bytes integer not null default 0,
+  caption text not null default '',
+  sort_order integer not null default 0,
+  created_at timestamptz not null default now()
+);
+
 create index if not exists steps_study_id_sort_order_idx on public.steps(study_id, sort_order);
 create index if not exists sessions_user_id_created_at_idx on public.sessions(user_id, created_at desc);
 create index if not exists sessions_study_id_idx on public.sessions(study_id);
 create index if not exists entries_session_id_timestamp_idx on public.entries(session_id, timestamp);
 create index if not exists audits_user_id_created_at_idx on public.audits(user_id, created_at desc);
 create index if not exists audit_findings_audit_id_created_at_idx on public.audit_findings(audit_id, created_at);
+create index if not exists audit_finding_images_finding_id_sort_order_idx on public.audit_finding_images(finding_id, sort_order);
 
 alter table public.studies enable row level security;
 alter table public.steps enable row level security;
@@ -81,6 +96,7 @@ alter table public.sessions enable row level security;
 alter table public.entries enable row level security;
 alter table public.audits enable row level security;
 alter table public.audit_findings enable row level security;
+alter table public.audit_finding_images enable row level security;
 
 drop policy if exists "users manage own studies" on public.studies;
 create policy "users manage own studies"
@@ -168,4 +184,60 @@ with check (
     where audits.id = audit_findings.audit_id
       and audits.user_id = auth.uid()
   )
+);
+
+drop policy if exists "users manage own audit finding images" on public.audit_finding_images;
+create policy "users manage own audit finding images"
+on public.audit_finding_images for all
+using (
+  auth.uid() = user_id
+  and exists (
+    select 1
+    from public.audit_findings
+    join public.audits on audits.id = audit_findings.audit_id
+    where audit_findings.id = audit_finding_images.finding_id
+      and audit_findings.audit_id = audit_finding_images.audit_id
+      and audits.user_id = auth.uid()
+  )
+)
+with check (
+  auth.uid() = user_id
+  and exists (
+    select 1
+    from public.audit_findings
+    join public.audits on audits.id = audit_findings.audit_id
+    where audit_findings.id = audit_finding_images.finding_id
+      and audit_findings.audit_id = audit_finding_images.audit_id
+      and audits.user_id = auth.uid()
+  )
+);
+
+drop policy if exists "users upload own audit finding images" on storage.objects;
+create policy "users upload own audit finding images"
+on storage.objects
+for insert
+to authenticated
+with check (
+  bucket_id = 'audit-finding-images'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+drop policy if exists "users read own audit finding images" on storage.objects;
+create policy "users read own audit finding images"
+on storage.objects
+for select
+to authenticated
+using (
+  bucket_id = 'audit-finding-images'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
+);
+
+drop policy if exists "users delete own audit finding images" on storage.objects;
+create policy "users delete own audit finding images"
+on storage.objects
+for delete
+to authenticated
+using (
+  bucket_id = 'audit-finding-images'
+  and (storage.foldername(name))[1] = (select auth.uid()::text)
 );
