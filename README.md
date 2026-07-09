@@ -53,9 +53,3 @@ Das erwartete Datenmodell ist in `supabase-schema.sql` dokumentiert. Die App erw
 - `config-v2.js` enthaelt einen Publishable Supabase Key. Das ist fuer Browser-Apps normal, ersetzt aber keine sauberen RLS-Policies.
 - `_alt/` enthaelt historische Einzeldatei-Prototypen und ist nicht Teil des aktiven Codes.
 - `feedback-audits.html` ist aktuell identisch mit `index.html` und kann als Alias oder Altlast betrachtet werden.
-
-## Gute naechste Schritte
-
-- Supabase-Schema mit der echten Datenbank abgleichen.
-- Ein kleines Test-Setup fuer Kernfunktionen ergaenzen.
-- Inline-HTML und Inline-Handler schrittweise in wiederverwendbare Render-Helfer ueberfuehren.
